@@ -52,7 +52,7 @@
     var geometry = new THREE.ShapeGeometry(shape, 25);
     var material = new THREE.MeshPhongMaterial({
       color: 0x0000ff,
-      side: THREE.DoubleSide, //两面可见
+      // side: THREE.DoubleSide, //两面可见
       wireframe: true,
     }); //材质对象
     var mesh = new THREE.Mesh(geometry, material); //网格模型对象
