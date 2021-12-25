@@ -56,27 +56,6 @@
 			}
 
 			this.compute();
-			const newFaces = [];
-			for (let i = 0; i < this.faces.length; i++) {
-				debugger;
-				const face = this.faces[i];
-				const mo = 0.2
-				const normal = face.normal;
-				const { x: nx0, y: ny0, z: nz0 } = normal;
-				const newNormal = new THREE.Vector3(nx0 * mo, ny0 * mo, nz0 * mo);
-				const { x: nx, y: ny, z: nz } = newNormal;
-				const { x: x0, y: y0, z: z0 } = face.midpoint;
-				const v0 = new VertexNode(new THREE.Vector3(nx + x0, ny + y0, nz + z0));
-				const v1 = face.edge.prev.vertex;
-				const v2 = face.edge.vertex;
-				const v3 = face.edge.next.vertex;
-				newFaces.push(
-					Face.create(v1, v0, v2),
-					Face.create(v1, v0, v3),
-					Face.create(v2, v0, v3)
-				);
-			}
-			this.faces = newFaces;
 			return this;
 		}
 

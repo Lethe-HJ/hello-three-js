@@ -6,7 +6,7 @@
     <style>
       body {
         margin: 0;
-        overflow: hidden;
+          overflow: hidden;
         /* 隐藏body窗口区域滚动条 */
       }
     </style>
@@ -24,8 +24,8 @@
        * 创建网格模型
        */
       //  Sphere:球形 Geometry:几何形状
-      var geometry = new THREE.SphereGeometry(60, 40, 40); //创建一个球体几何对象
-      // var geometry = new THREE.BoxGeometry(100, 100, 100); //创建一个立方体几何对象Geometry
+      // var geometry = new THREE.SphereGeometry(60, 40, 40); //创建一个球体几何对象
+      var geometry = new THREE.BoxGeometry(100, 100, 100); //创建一个立方体几何对象Geometry
       var material = new THREE.MeshLambertMaterial({
         // Mesh:网格
         color: 0x0000ff,
