@@ -916,7 +916,14 @@ class VertexList {
 }
 
 class ConvexGeometry extends THREE.BufferGeometry {
-  constructor(points) {
+  constructor(
+    points,
+    options = {
+      smoothness: 1,
+      coefficient: 0.1,
+      maxOffset: 0.2,
+    }
+  ) {
     super(); // buffers
 
     const vertices = [];
@@ -989,8 +996,8 @@ class SmoothConvexGeometry {
   constructor(
     points,
     options = {
-      smoothness: 5,
-      coefficient: 0.4,
+      smoothness: 6,
+      coefficient: 0.1,
       maxOffset: 0.1,
     }
   ) {
@@ -1001,26 +1008,25 @@ class SmoothConvexGeometry {
   }
 
   smoothing(geometry) {
-    const start = new Date().getTime();
     let logFlag = false;
     let { smoothness, coefficient, maxOffset } = this.options;
     for (s = 0; s < smoothness; s += 1) {
-      const coef = coefficient * Math.pow(s + 1, -1);
-      const mOffset = maxOffset * Math.pow(s + 1, -1);
-      // console.log(coef, mOffset);
+      coef = coefficient * 0.5;
+      offset = maxOffset * 0.5;
       const faces = geometry.convexHull.faces;
       if (faces.length === 204) logFlag = true;
-      // logFlag &&
-      //   console.log(
-      //     `第${s}次优化 面${faces.length}, 点${geometry.convexHull.vertices.length}`
-      //   );
-      let newPoints = [];
+      logFlag &&
+        console.log(
+          `第${s}次优化 面${faces.length}, 点${geometry.convexHull.vertices.length}`
+        );
+      const newPoints = [];
       for (let i = 0; i < faces.length; i++) {
         const face = faces[i];
         const v2 = face.edge.vertex;
-        const r = v2.point.distanceTo(face.midpoint);
-        if (r < 0.0001) continue;
-        const modulus = Math.min(coef * r, mOffset);
+        const modulus = Math.min(
+          coef * v2.point.distanceTo(face.midpoint),
+          offset
+        );
         const normal = face.normal;
         const { x: nx0, y: ny0, z: nz0 } = normal;
         const newNormal = new THREE.Vector3(
@@ -1033,13 +1039,9 @@ class SmoothConvexGeometry {
         const v0 = new THREE.Vector3(nx + x0, ny + y0, nz + z0);
         newPoints.push(v0);
       }
-      newPoints = newPoints.concat(
-        geometry.convexHull.vertices.map((item) => item.point)
-      );
+      newPoints.push(...geometry.convexHull.vertices.map((item) => item.point));
       geometry = new ConvexGeometry(newPoints);
     }
-    const end = new Date().getTime();
-    console.log(`耗时${end - start}`);
     return geometry;
   }
 }

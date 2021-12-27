@@ -76,11 +76,11 @@
         // 点渲染模式
         var material2 = new THREE.PointsMaterial({
           //   color: 0xffffff * Math.random() * 255,
-          color: 0x000000,
+          color: 0xff0000,
           size: 2.0, //点对象像素尺寸
         }); //材质对象
         var pointsObj = new THREE.Points(geometry2, material2); //点模型对象
-        scene.add(pointsObj); //点对象添加到场景中
+        // scene.add(pointsObj); //点对象添加到场景中
       });
 
       // 辅助坐标系   老版本AxisHelper 新版本AxesHelper
