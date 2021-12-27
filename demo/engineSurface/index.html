@@ -34,11 +34,21 @@
       );
       pointsLi.forEach((points, idx) => {
         if (points.length < 4) return;
-        var geometry = new THREE.ConvexGeometry(points);
-        var material = new THREE.MeshBasicMaterial({
-          color: 0xff0000,
-          side: THREE.DoubleSide, //两面可见
-          wireframe: true,
+        // var geometry = new THREE.ConvexGeometry(points);
+        // var material = new THREE.MeshBasicMaterial({
+        //   color: 0x3ff000,
+        //   // side: THREE.DoubleSide, //两面可见
+        //   // wireframe: true,
+        // }); //材质对象
+        // var mesh = new THREE.Mesh(geometry, material); //网格模型对象
+        // scene.add(mesh);
+
+        let geometry = new SmoothConvexGeometry(points);
+
+        var material = new THREE.MeshLambertMaterial({
+          color: 0xffc0cb,
+          // side: THREE.DoubleSide, //两面可见
+          // wireframe: true,
         }); //材质对象
         var mesh = new THREE.Mesh(geometry, material); //网格模型对象
         scene.add(mesh);
@@ -76,6 +86,15 @@
       // 辅助坐标系   老版本AxisHelper 新版本AxesHelper
       var axisHelper = new THREE.AxesHelper(250);
       scene.add(axisHelper);
+
+      var point = new THREE.PointLight(0xffffff);
+      point.position.set(400, 200, 300); //点光源位置
+      // 通过add方法插入场景中，不插入的话，渲染的时候不会获取光源的信息进行光照计算
+      scene.add(point); //点光源添加到场景中
+      //环境光    环境光颜色与网格模型的颜色进行RGB进行乘法运算
+      var ambient = new THREE.AmbientLight(0x444444);
+      scene.add(ambient);
+
       /**
        * 相机设置
        */
