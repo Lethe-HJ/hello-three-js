@@ -4,6 +4,8 @@
         "Neighbour",
         "Quickhull",
         "reindex",
+        "udir",
+        "vdir",
         "wireframe"
     ]
 }

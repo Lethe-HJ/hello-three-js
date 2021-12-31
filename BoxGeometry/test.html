@@ -6,7 +6,7 @@
     <style>
       body {
         margin: 0;
-          overflow: hidden;
+        overflow: hidden;
         /* 隐藏body窗口区域滚动条 */
       }
     </style>
@@ -25,8 +25,14 @@
        */
       //  Sphere:球形 Geometry:几何形状
       // var geometry = new THREE.SphereGeometry(60, 40, 40); //创建一个球体几何对象
-      debugger
-      var geometry = new THREE.BoxGeometry(100, 100, 100); //创建一个立方体几何对象Geometry
+      var geometry = new THREE.BoxGeometry(
+        100,
+        200,
+        300,
+        (widthSegments = 2),
+        (heightSegments = 3),
+        (depthSegments = 4)
+      ); //创建一个立方体几何对象Geometry
       var material = new THREE.MeshLambertMaterial({
         // Mesh:网格
         color: 0x0000ff,
@@ -64,22 +70,7 @@
       renderer.setClearColor(0xb9d3ff, 1); //设置背景颜色
       document.body.appendChild(renderer.domElement); //body元素中插入canvas对象
 
-      // 渲染函数
-      let T0 = new Date(); //上次时间
-      function render() {
-        let T1 = new Date(); //本次时间
-        let t = T1 - T0; //时间差
-        console.log(t); //两帧之间时间间隔  单位：ms
-        // console.log(Math.round(1000/t));//渲染频率
-        T0 = T1; //把本次时间赋值给上次时间
-        //执行渲染操作   指定场景、相机作为参数
-        renderer.render(scene, camera);
-
-        mesh.rotateY(0.01); //每次绕y轴旋转0.01弧度
-        mesh.rotateX(0.02);
-        requestAnimationFrame(render); //请求再次执行渲染函数render，渲染下一帧
-      }
-      render();
+      renderer.render(scene, camera);
     </script>
   </body>
 </html>
