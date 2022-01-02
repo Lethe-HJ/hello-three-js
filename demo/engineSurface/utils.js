@@ -995,6 +995,7 @@ class SmoothConvexGeometry {
     }
   ) {
     this.options = options;
+    debugger;
     let geometry = new ConvexGeometry(points);
     geometry = this.smoothing(geometry);
     return geometry;

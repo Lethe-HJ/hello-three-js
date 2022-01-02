@@ -11,6 +11,7 @@
     </style>
     <script src="../../three.js-master/build/three.js"></script>
     <script src="../../three.js-master/examples/js/controls/OrbitControls.js"></script>
+    <script src="../../three.js-master/examples/js/math/ConvexHull.js"></script>
     <script src="../../three.js-master/examples/js/geometries/ConvexGeometry.js"></script>
     <script src="./CHGCAR.js"></script>
     <script src="./utils.js"></script>
@@ -37,14 +38,6 @@
         let geometry1 = new ConcaveSurfaceGeometry(points, sideLen);
         const redPoints = geometry1.surfacePoints;
         if (redPoints.length < 4) return;
-        // geometry1 = new TestBoxGeometry(
-        //   100,
-        //   200,
-        //   300,
-        //   (widthSegments = 2),
-        //   (heightSegments = 3),
-        //   (depthSegments = 4)
-        // );
         geometry111 = geometry1;
         const material1 = new THREE.MeshLambertMaterial({
           color: 0xffc0cb,
@@ -54,6 +47,16 @@
         }); //材质对象
         const mesh = new THREE.Mesh(geometry1, material1); //网格模型对象
         scene.add(mesh);
+
+        var geometry2 = new THREE.BufferGeometry();
+        geometry2.setFromPoints(redPoints);
+        var material2 = new THREE.PointsMaterial({
+          // color: 0xffffff * Math.random() * 255,
+          color: 0xff0000,
+          size: 2.0,
+        });
+        var pointsObj = new THREE.Points(geometry2, material2);
+        scene.add(pointsObj);
       });
 
       // 辅助坐标系   老版本AxisHelper 新版本AxesHelper

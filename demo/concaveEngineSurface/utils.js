@@ -207,6 +207,7 @@ class ConcaveSurfaceGeometry extends THREE.BufferGeometry {
     const { x, y, z } = A;
     const facesDict = {};
     const points = {
+      A: [x, y, z],
       B: [x + 1, y, z],
       C: [x + 1, y, z + 1],
       D: [x, y, z + 1],
@@ -223,28 +224,55 @@ class ConcaveSurfaceGeometry extends THREE.BufferGeometry {
         points[key] = null;
       }
     }
-    const { B, C, D, A1, B1, C1, D1 } = points;
-    // 外部四角面ABCD
-    if (B && C) {
-      facesDict.ABC = this.getFace(A, B, C);
+    const pointsLi = Object.values(points)
+      .filter((item) => item)
+      .map((item) => item.vector);
+    if (pointsLi.length >= 4) {
+      if (THREE.ConvexHull === undefined) {
+        console.error(
+          "THREE.ConvexBufferGeometry: ConvexBufferGeometry relies on THREE.ConvexHull"
+        );
+      }
+
+      const convexHull = new THREE.ConvexHull().setFromPoints(pointsLi);
+      const faces = convexHull.faces;
+      faces.forEach((face, index) => {
+        let edge = face.edge;
+        const p1 = edge.vertex.point;
+        edge = edge.next;
+        const p2 = edge.vertex.point;
+        edge = edge.next;
+        const p3 = edge.vertex.point;
+        if (p1.x === p2.x && p2.x === p3.x && p3.x === x + 1) return;
+        if (p1.y === p2.y && p2.y === p3.y && p3.y === y + 1) return;
+        if (p1.z === p2.z && p2.z === p3.z && p3.z === z + 1) return;
+
+          facesDict[index] = this.getFace(p1, p2, p3);
+      });
     }
-    if (C && D) {
-      facesDict.ACD = this.getFace(A, C, D);
-    }
-    // 外部四角面AA1D1D
-    if (A1 && D1) {
-      facesDict.AA1D1 = this.getFace(A, A1, D1);
-    }
-    if (D1 && D) {
-      facesDict.AD1D = this.getFace(A, D1, D);
-    }
-    // 外部四角面ABB1A1
-    if (B && B1) {
-      facesDict.ABB1 = this.getFace(A, B, B1);
-    }
-    if (B1 && A1) {
-      facesDict.AB1A1 = this.getFace(A, B1, A1);
-    }
+
+    // const { B, C, D, A1, B1, C1, D1 } = points;
+    // // 外部四角面ABCD
+    // if (B && C) {
+    //   facesDict.ABC = this.getFace(A, B, C);
+    // }
+    // if (C && D) {
+    //   facesDict.ACD = this.getFace(A, C, D);
+    // }
+    // // 外部四角面AA1D1D
+    // if (A1 && D1) {
+    //   facesDict.AA1D1 = this.getFace(A, A1, D1);
+    // }
+    // if (D1 && D) {
+    //   facesDict.AD1D = this.getFace(A, D1, D);
+    // }
+    // // 外部四角面ABB1A1
+    // if (B && B1) {
+    //   facesDict.ABB1 = this.getFace(A, B, B1);
+    // }
+    // if (B1 && A1) {
+    //   facesDict.AB1A1 = this.getFace(A, B1, A1);
+    // }
     return facesDict;
   }
 
