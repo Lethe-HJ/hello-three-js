@@ -119,10 +119,13 @@ class ConcaveSurfaceGeometry extends THREE.BufferGeometry {
     this.vertices = [];
     this.normals = [];
     this.type = "ConcaveSurfaceGeometry";
+    this.edgesMap = new Map();
     this.faces = [];
     this.sideLen = sideLen;
+    this.uvs = [];
     this.cPoints = this.markSurfacePoints(cPoints);
-    this.edgesMap = this.bfsTraverseConnect();
+
+    this.bfsTraverseConnect();
     this.setIndex(this.indices);
     this.setAttribute(
       "position",
@@ -132,7 +135,7 @@ class ConcaveSurfaceGeometry extends THREE.BufferGeometry {
       "normal",
       new THREE.Float32BufferAttribute(this.normals, 3)
     );
-    // this.setAttribute("uv", new Float32BufferAttribute(uvs, 2));
+    // this.setAttribute("uv", new THREE.Float32BufferAttribute(this.uvs, 2));
   }
 
   markSurfacePoints(cPoints) {
@@ -151,96 +154,12 @@ class ConcaveSurfaceGeometry extends THREE.BufferGeometry {
   }
 
   /**
-   * X
-   * ^
-   * |  B___C
-   * |  |  /
-   * |  | /
-   * |  |/
-   * |  A
-   * |
-   * |  C___B
-   * |   \  |
-   * |    \ |
-   * |     \|
-   * |      A
-   * |  Y
-   * | /
-   * |/
-   * 0-------------> Z
    * @return {*}
    * @memberof ConcaveSurfaceGeometry
    */
-  // bfsTraverseConnect() {
-  //   const visitedMap = new Map();
-  //   const stack = [];
-  //   const edgesMap = new Map();
-  //   for (let i = 0; i < this.cPoints.length; i++) {
-  //     const cPoint = this.cPoints[i];
-  //     // 该点不存在(不符合要求) 或者 该点不在面上
-  //     if (!cPoint || !cPoint.isSurface) continue;
-  //     // 这个点已经被访问过了
-  //     if (visitedMap.get(i)) continue;
-  //     stack.push(i);
-  //     while (stack.length) {
-  //       const i = stack.pop();
-  //       const A = this.cPoints[i];
-  //       A.edges = [];
-  //       if (visitedMap.get(i)) continue;
-  //       // vIndex is the index of vector in this.vertices
-  //       const { x, y, z } = A.vector;
-  //       if (!A.vIndex) {
-  //         A.vIndex = this.vertices.push(x, y, z) / 3 - 1;
-  //       }
-  //       visitedMap.set(i, A);
-  //       const cNeighbour = A.neighbour;
-  //       for (let j = 0; j < cNeighbour.length; j += 1) {
-  //         const nIndex = cNeighbour[j];
-  //         if (visitedMap.get(nIndex)) continue;
-  //         const point = this.cPoints[nIndex];
-  //         if (point && point.isSurface) {
-  //           stack.push(nIndex);
-  //           const BCs = this.findBCPair(A);
-  //           BCs.forEach((BC) => {
-  //             // console.log(BC.B.vector, BC.C.vector);
-  //             const { B, C } = BC;
-  //             const ab = new Edge(A, B);
-  //             const bc = new Edge(B, C);
-  //             const ca = new Edge(C, A);
-  //             // if (edgesMap.has(ab.id)) return;
-  //             // if (edgesMap.has(bc.id)) return;
-  //             // if (edgesMap.has(ca.id)) return;
-  //             if (!B.vIndex) {
-  //               const { x, y, z } = B.vector;
-  //               B.vIndex = this.vertices.push(x, y, z) / 3 - 1;
-  //             }
-  //             if (!C.vIndex) {
-  //               const { x, y, z } = C.vector;
-  //               C.vIndex = this.vertices.push(x, y, z) / 3 - 1;
-  //             }
-  //             edgesMap.set(ab.id, ab);
-  //             edgesMap.set(bc.id, bc);
-  //             edgesMap.set(ca.id, ca);
-  //             // if (this.faces.length > 10) return;
-  //             const face = new Face(ab, bc, ca);
-  //             this.faces.push(face);
-  //             this.addFace(face);
-  //           });
-  //           // const edge = new Edge(A, point);
-  //           // if (edge && !edgesMap.has(edge.id)) {
-  //           //   edgesMap.set(edge.id, edge);
-  //           //   A.edges.push(edge);
-  //           // }
-  //         }
-  //       }
-  //     }
-  //   }
-  //   return edgesMap;
-  // }
-
   bfsTraverseConnect() {
     const visitedMap = new Map();
-    const edgesMap = new Map();
+    const len = this.cPoints.length;
     for (let i = 0; i < this.cPoints.length; i++) {
       const A = this.cPoints[i];
       // 该点不存在(不符合要求) 或者 该点不在面上
@@ -248,128 +167,390 @@ class ConcaveSurfaceGeometry extends THREE.BufferGeometry {
       // 这个点已经被访问过了
       if (visitedMap.get(i)) continue;
       A.edges = [];
-      // vIndex is the index of vector in this.vertices
-      const { x, y, z } = A.vector;
-      if (!A.vIndex) {
-        A.vIndex = this.vertices.push(x, y, z) / 3 - 1;
-      }
       visitedMap.set(i, A);
-      const BCs = this.findBCPair(A);
-      BCs.forEach((BC) => {
-        // console.log(BC.B.vector, BC.C.vector);
-        const { B, C } = BC;
-        const ab = new Edge(A, B);
-        const bc = new Edge(B, C);
-        const ca = new Edge(C, A);
-        // if (edgesMap.has(ab.id)) return;
-        // if (edgesMap.has(bc.id)) return;
-        // if (edgesMap.has(ca.id)) return;
-        if (!B.vIndex) {
-          const { x, y, z } = B.vector;
-          B.vIndex = this.vertices.push(x, y, z) / 3 - 1;
-        }
-        if (!C.vIndex) {
-          const { x, y, z } = C.vector;
-          C.vIndex = this.vertices.push(x, y, z) / 3 - 1;
-        }
-        edgesMap.set(ab.id, ab);
-        edgesMap.set(bc.id, bc);
-        edgesMap.set(ca.id, ca);
-        // if (this.faces.length > 10) return;
-        const face = new Face(ab, bc, ca);
-        this.faces.push(face);
+      const facesDict = this.getFacesOf(A);
+      for (let fKey in facesDict) {
+        const face = facesDict[fKey];
         this.addFace(face);
-      });
+      }
     }
-    return edgesMap;
   }
 
-  findBCPair(A) {
-    const Bs = [];
-    const Cs = [];
-    const B1 = this.cPoints[getIndex(A.x + 1, A.y, A.z, this.sideLen)];
-    B1 && B1.isSurface && Bs.push(B1);
-    const B2 = this.cPoints[getIndex(A.x + 1, A.y + 1, A.z, this.sideLen)];
-    B2 && B2.isSurface && Bs.push(B2);
-
-    const C1 = this.cPoints[getIndex(A.x + 1, A.y, A.z + 1, this.sideLen)];
-    C1 && C1.isSurface && Cs.push(C1);
-    const C2 = this.cPoints[getIndex(A.x + 1, A.y + 1, A.z + 1, this.sideLen)];
-    C2 && C2.isSurface && Cs.push(C2);
-    const BCs = [];
-    Bs.forEach((B) => {
-      Cs.forEach((C) => {
-        BCs.push({ B, C });
-      });
-    });
-    return BCs;
+  /**
+   * B1-------C1
+   * | \      | \
+   * |  A1-------D1
+   * |  |     |  |
+   * B--|-----C  |
+   *  \ |      \ |
+   *    A--------D
+   * 外部四角面ABCD ==> ABC ACD
+   * 外部四角面AA1D1D ==> AA1D1 AD1D
+   * 外部四角面ABB1A1 ==> ABB1 AB1A1
+   * 内部四角面ABC1D1 ==> ABC1 AC1D1 ((!A1&!B1) ||(!D&!C))
+   * 内部四角面A1B1CD ==> A1B1C A1CD ((!A&!B) ||(!D1&!C1))
+   * 内部四角面AA1C1C ==> AA1C1 AC1C ((!D1&!D) ||(!B1&!B))
+   * 内部四角面BB1D1D ==> BB1D1 BD1D ((!C1&!C) ||(!A1&!A))
+   * 内部四角面AB1C1D ==> AB1C1 AC1D ((!A1&!D1) ||(!B&!C))
+   * 内部四角面BA1D1C ==> BA1D1 BD1C ((!A&!D) ||(!B1&!C1))
+   * 内部三角面ACB1 !B
+   * 内部三角面BDC1 !C
+   * 内部三角面AD1C !D
+   * 内部三角面AB1D1 !A1
+   * 内部三角面BC1A1 !B1
+   * 内部三角面CD1B1 !C1
+   * 内部三角面DA1C1 !D1
+   * @param {*} A
+   * @returns
+   */
+  getFacesOf(A) {
+    const { x, y, z } = A;
+    const facesDict = {};
+    const points = {
+      B: [x + 1, y, z],
+      C: [x + 1, y, z + 1],
+      D: [x, y, z + 1],
+      A1: [x, y + 1, z],
+      B1: [x + 1, y + 1, z],
+      C1: [x + 1, y + 1, z + 1],
+      D1: [x, y + 1, z + 1],
+    };
+    for (let key in points) {
+      const newPoint = this.cPoints[getIndex(...points[key], this.sideLen)];
+      if (newPoint && newPoint.isSurface) {
+        points[key] = newPoint;
+      } else {
+        points[key] = null;
+      }
+    }
+    const { B, C, D, A1, B1, C1, D1 } = points;
+    // 外部四角面ABCD
+    if (B && C) {
+      facesDict.ABC = this.getFace(A, B, C);
+    }
+    if (C && D) {
+      facesDict.ACD = this.getFace(A, C, D);
+    }
+    // 外部四角面AA1D1D
+    if (A1 && D1) {
+      facesDict.AA1D1 = this.getFace(A, A1, D1);
+    }
+    if (D1 && D) {
+      facesDict.AD1D = this.getFace(A, D1, D);
+    }
+    // 外部四角面ABB1A1
+    if (B && B1) {
+      facesDict.ABB1 = this.getFace(A, B, B1);
+    }
+    if (B1 && A1) {
+      facesDict.AB1A1 = this.getFace(A, B1, A1);
+    }
+    return facesDict;
   }
 
-  // computerFace() {
-  //   const faces = [];
-  //   // if(this.cPoints.length > 1000) {
-  //   //   debugger
-  //   // }
-  //   for (let [_, edge_a] of this.edgesMap) {
-  //     let faceCount = 0;
-  //     const { begin: pointA, end: pointB } = edge_a;
-  //     for (let i = 0; i < pointB.edges.length; i += 1) {
-  //       const edge_b = pointB.edges[i];
-  //       if (faceCount === 2) break;
-  //       const pointC = edge_b.end;
-  //       if (pointC.index === pointA.index) continue; // edge_b is edge_a
-  //       const edge_c = this.edgesMap.get(`${pointC.index}_${pointA.index}`);
-  //       if (edge_c) {
-  //         const face = new Face(edge_a, edge_b, edge_c);
-  //         faces.push(face);
-  //         this.addFace(face);
-  //         faceCount += 1;
-  //       }
-  //     }
-  //   }
-  //   return faces;
-  // }
+  getFace(p1, p2, p3) {
+    this.getEdge(p1, p2);
+    this.getEdge(p2, p3);
+    this.getEdge(p3, p1);
+    const face = new Face(p1, p2, p3);
+    this.faces.push(face);
+    return face;
+  }
+
+  getPoint(p) {
+    const { x, y, z } = p;
+    return p;
+  }
+
+  getEdge(begin, end) {
+    begin = this.getPoint(begin);
+    end = this.getPoint(end);
+    const edgeKey = `${begin.index}_${end.index}`;
+    let edge = this.edgesMap.get(edgeKey);
+    if (!edge) {
+      edge = new Edge(begin, end);
+      this.edgesMap.set(edgeKey, edge);
+    }
+    return edge;
+  }
 
   addFace(face) {
-    const indices = face.points.map((point) => point.vIndex);
-    this.indices.push(...indices);
-    this.normals.push(face.normal);
+    const { p1, p2, p3 } = face;
+    p1.vIndex = this.vertices.push(p1.x, p1.y, p1.z) / 3 - 1;
+    p2.vIndex = this.vertices.push(p2.x, p2.y, p2.z) / 3 - 1;
+    p3.vIndex = this.vertices.push(p3.x, p3.y, p3.z) / 3 - 1;
+    this.indices.push(face.p1.vIndex, face.p2.vIndex, face.p3.vIndex);
+    const { x, y, z } = face.normal;
+    this.normals.push(x, y, z, x, y, z, x, y, z);
   }
 }
 
 class Edge {
-  constructor(pointA, pointB) {
-    this.id = `${pointA.index}_${pointB.index}`;
-    this.begin = pointA;
-    this.end = pointB;
+  constructor(e1, e2) {
+    this.begin = e1;
+    this.end = e2;
   }
 }
 
 class Face {
-  constructor(edgeA, edgeB, edgeC) {
-    this.edges = [edgeA, edgeB, edgeC];
-    this._points = null;
+  constructor(p1, p2, p3) {
+    this.p1 = p1;
+    this.p2 = p2;
+    this.p3 = p3;
     this.normal = new THREE.Vector3();
     this.midpoint = new THREE.Vector3();
-    this.compute();
-  }
-
-  get points() {
-    if (!this._points) {
-      this._points = [
-        this.edges[0].begin,
-        this.edges[1].begin,
-        this.edges[2].begin,
-      ];
-    }
-    return this._points;
-  }
-
-  compute() {
     const triangle = new THREE.Triangle();
-    const points = this.points.map((point) => point.vector);
-    triangle.set(...points);
+    triangle.set(p1, p2, p3);
     triangle.getNormal(this.normal);
     triangle.getMidpoint(this.midpoint);
+  }
+}
+
+class TestBoxGeometry extends THREE.BufferGeometry {
+  constructor(
+    width = 1,
+    height = 1,
+    depth = 1,
+    widthSegments = 1,
+    heightSegments = 1,
+    depthSegments = 1
+  ) {
+    super();
+
+    this.type = "BoxGeometry";
+
+    this.parameters = {
+      width: width,
+      height: height,
+      depth: depth,
+      widthSegments: widthSegments,
+      heightSegments: heightSegments,
+      depthSegments: depthSegments,
+    };
+
+    const scope = this;
+
+    // segments
+
+    widthSegments = Math.floor(widthSegments);
+    heightSegments = Math.floor(heightSegments);
+    depthSegments = Math.floor(depthSegments);
+
+    // buffers
+
+    const indices = [];
+    const vertices = [];
+    const normals = [];
+    const uvs = [];
+
+    // helper variables
+
+    let numberOfVertices = 0;
+    let groupStart = 0;
+
+    // build each side of the box geometry
+
+    buildPlane(
+      "z",
+      "y",
+      "x",
+      -1,
+      -1,
+      depth,
+      height,
+      width,
+      depthSegments,
+      heightSegments,
+      0
+    ); // px
+    buildPlane(
+      "z",
+      "y",
+      "x",
+      1,
+      -1,
+      depth,
+      height,
+      -width,
+      depthSegments,
+      heightSegments,
+      1
+    ); // nx
+    buildPlane(
+      "x",
+      "z",
+      "y",
+      1,
+      1,
+      width,
+      depth,
+      height,
+      widthSegments,
+      depthSegments,
+      2
+    ); // py
+    buildPlane(
+      "x",
+      "z",
+      "y",
+      1,
+      -1,
+      width,
+      depth,
+      -height,
+      widthSegments,
+      depthSegments,
+      3
+    ); // ny
+    buildPlane(
+      "x",
+      "y",
+      "z",
+      1,
+      -1,
+      width,
+      height,
+      depth,
+      widthSegments,
+      heightSegments,
+      4
+    ); // pz
+    buildPlane(
+      "x",
+      "y",
+      "z",
+      -1,
+      -1,
+      width,
+      height,
+      -depth,
+      widthSegments,
+      heightSegments,
+      5
+    ); // nz
+
+    // build geometry
+
+    this.setIndex(indices);
+    this.setAttribute(
+      "position",
+      new THREE.Float32BufferAttribute(vertices, 3)
+    );
+    this.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
+    // this.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+
+    function buildPlane(
+      u,
+      v,
+      w,
+      udir,
+      vdir,
+      width,
+      height,
+      depth,
+      gridX,
+      gridY,
+      materialIndex
+    ) {
+      // width 边长 gridX 分成多少段 segmentWidth 每段多长
+      const segmentWidth = width / gridX;
+      const segmentHeight = height / gridY;
+
+      const widthHalf = width / 2;
+      const heightHalf = height / 2;
+      const depthHalf = depth / 2;
+
+      const gridX1 = gridX + 1;
+      const gridY1 = gridY + 1;
+
+      let vertexCounter = 0;
+      let groupCount = 0;
+
+      const vector = new THREE.Vector3();
+
+      // generate vertices, normals and uvs
+
+      for (let iy = 0; iy < gridY1; iy++) {
+        const y = iy * segmentHeight - heightHalf;
+
+        for (let ix = 0; ix < gridX1; ix++) {
+          const x = ix * segmentWidth - widthHalf;
+
+          // set values to correct vector component
+
+          vector[u] = x * udir;
+          vector[v] = y * vdir;
+          vector[w] = depthHalf;
+
+          // now apply vector to vertex buffer
+
+          vertices.push(vector.x, vector.y, vector.z);
+
+          // set values to correct vector component
+
+          vector[u] = 0;
+          vector[v] = 0;
+          vector[w] = depth > 0 ? 1 : -1;
+
+          // now apply vector to normal buffer
+
+          normals.push(vector.x, vector.y, vector.z);
+
+          // uvs
+          uvs.push(ix / gridX);
+          uvs.push(1 - iy / gridY);
+
+          // counters
+
+          vertexCounter += 1;
+        }
+      }
+
+      // indices
+
+      // 1. you need three indices to draw a single face
+      // 2. a single segment consists of two faces
+      // 3. so we need to generate six (2*3) indices per segment
+
+      for (let iy = 0; iy < gridY; iy++) {
+        for (let ix = 0; ix < gridX; ix++) {
+          const a = numberOfVertices + ix + gridX1 * iy;
+          const b = numberOfVertices + ix + gridX1 * (iy + 1);
+          const c = numberOfVertices + (ix + 1) + gridX1 * (iy + 1);
+          const d = numberOfVertices + (ix + 1) + gridX1 * iy;
+
+          // faces
+
+          indices.push(a, b, d);
+          indices.push(b, c, d);
+
+          // increase counter
+          groupCount += 6;
+        }
+      }
+
+      // add a group to the geometry. this will ensure multi material support
+
+      scope.addGroup(groupStart, groupCount, materialIndex);
+
+      // calculate new start value for groups
+
+      groupStart += groupCount;
+
+      // update total number of vertices
+
+      numberOfVertices += vertexCounter;
+    }
+  }
+
+  static fromJSON(data) {
+    return new TestBoxGeometry(
+      data.width,
+      data.height,
+      data.depth,
+      data.widthSegments,
+      data.heightSegments,
+      data.depthSegments
+    );
   }
 }

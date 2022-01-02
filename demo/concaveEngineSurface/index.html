@@ -20,80 +20,88 @@
     <script>
       const IsoSurfaceLevel = 2;
       const precision = 0.5;
-      var geometry111;
+      let geometry111;
       let sideLen = 48;
-      sideLen = 5;
+      // sideLen = 5;
       /**
        * 创建场景对象Scene
        */
-      var scene = new THREE.Scene();
+      const scene = new THREE.Scene();
       const data1 = new Array(Math.pow(sideLen, 3)).fill(2);
       const pointsLi = generateSplitPoints(
-        data1,
+        data,
         sideLen,
         (value) => Math.abs(value - IsoSurfaceLevel) < precision
       );
       pointsLi.forEach((points, idx) => {
-        var geometry1 = new ConcaveSurfaceGeometry(points, sideLen);
+        let geometry1 = new ConcaveSurfaceGeometry(points, sideLen);
         const redPoints = geometry1.surfacePoints;
         if (redPoints.length < 4) return;
-        if (redPoints.length > 10) {
-          geometry111 = geometry1;
-        }
-        var material1 = new THREE.MeshLambertMaterial({
-          color: 0xff00fb,
+        // geometry1 = new TestBoxGeometry(
+        //   100,
+        //   200,
+        //   300,
+        //   (widthSegments = 2),
+        //   (heightSegments = 3),
+        //   (depthSegments = 4)
+        // );
+        geometry111 = geometry1;
+        const material1 = new THREE.MeshLambertMaterial({
+          color: 0xffc0cb,
+          // color: 0xff0000,
           side: THREE.DoubleSide, //两面可见
           // wireframe: true,
         }); //材质对象
-        var mesh = new THREE.Mesh(geometry1, material1); //网格模型对象
-        // scene.add(mesh);
-
-        var geometry2 = new THREE.BufferGeometry();
-        geometry2.setFromPoints(redPoints);
-        var material2 = new THREE.PointsMaterial({
-          // color: 0xffffff * Math.random() * 255,
-          color: 0xff0000,
-          size: 2.0,
-        });
-        var pointsObj = new THREE.Points(geometry2, material2);
-        scene.add(pointsObj);
-
-        const material = new THREE.LineBasicMaterial({
-          color: 0x000000,
-        });
-        geometry1.edgesMap.forEach((edge) => {
-          const points = [edge.begin.vector, edge.end.vector];
-          const geometry = new THREE.BufferGeometry().setFromPoints(points);
-          const line = new THREE.Line(geometry, material);
-          scene.add(line);
-        });
+        const mesh = new THREE.Mesh(geometry1, material1); //网格模型对象
+        scene.add(mesh);
       });
 
-      var axisHelper = new THREE.AxesHelper(250);
+      // 辅助坐标系   老版本AxisHelper 新版本AxesHelper
+      const axisHelper = new THREE.AxesHelper(250);
       scene.add(axisHelper);
 
-      var point = new THREE.PointLight(0xffffff);
-      point.position.set(400, 200, 300);
-      scene.add(point);
-      var ambient = new THREE.AmbientLight(0x444444);
+      const point = new THREE.PointLight(0xffffff);
+      point.position.set(400, 200, 300); //点光源位置
+      // 通过add方法插入场景中，不插入的话，渲染的时候不会获取光源的信息进行光照计算
+      scene.add(point); //点光源添加到场景中
+      //环境光    环境光颜色与网格模型的颜色进行RGB进行乘法运算
+      const ambient = new THREE.AmbientLight(0x444444);
       scene.add(ambient);
 
-      var width = window.innerWidth;
-      var height = window.innerHeight;
-      var k = width / height;
-      var s = 150;
-      var camera = new THREE.OrthographicCamera(-s * k, s * k, s, -s, 1, 1000);
-      camera.position.set(-326, 308, 387);
-      camera.lookAt(scene.position);
-      var renderer = new THREE.WebGLRenderer();
-      renderer.setSize(width, height);
-      renderer.setClearColor(0xb9d3ff, 1);
-      document.body.appendChild(renderer.domElement);
+      /**
+       * 相机设置
+       */
+      const width = window.innerWidth; //窗口宽度
+      const height = window.innerHeight; //窗口高度
+      const k = width / height; //窗口宽高比
+      const s = 150; //三维场景显示范围控制系数，系数越大，显示的范围越大
+      //创建相机对象
+      const camera = new THREE.OrthographicCamera(
+        -s * k,
+        s * k,
+        s,
+        -s,
+        1,
+        1000
+      );
+      camera.position.set(-326, 308, 387); //设置相机位置
+      camera.lookAt(scene.position); //设置相机方向(指向的场景对象)
+      /**
+       * 创建渲染器对象
+       */
+      const renderer = new THREE.WebGLRenderer();
+      renderer.setSize(width, height); //设置渲染区域尺寸
+      renderer.setClearColor(0xb9d3ff, 1); //设置背景颜色
+      document.body.appendChild(renderer.domElement); //body元素中插入canvas对象
+
+      // 渲染函数
       function render() {
-        renderer.render(scene, camera);
+        renderer.render(scene, camera); //执行渲染操作
       }
       render();
-      var controls = new THREE.OrbitControls(camera, renderer.domElement);
+      //创建控件对象  相机对象camera作为参数   控件可以监听鼠标的变化，改变相机对象的属性
+      const controls = new THREE.OrbitControls(camera, renderer.domElement);
+      //监听鼠标事件，触发渲染函数，更新canvas画布渲染效果
       controls.addEventListener("change", render);
     </script>
   </body>
