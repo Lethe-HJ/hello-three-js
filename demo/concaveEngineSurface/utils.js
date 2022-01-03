@@ -113,11 +113,21 @@ class Point {
 }
 
 class ConcaveSurfaceGeometry extends THREE.BufferGeometry {
-  constructor(cPoints, sideLen) {
+  constructor(
+    cPoints,
+    sideLen,
+    options = {
+      smoothness: 0,
+      coefficient: 0.4,
+      maxOffset: 0.1,
+    }
+  ) {
     super();
+    this.options = options;
     this.indices = [];
     this.vertices = [];
     this.normals = [];
+    this.center = this.computeCenter(cPoints); // 几何重心
     this.type = "ConcaveSurfaceGeometry";
     this.edgesMap = new Map();
     this.faces = [];
@@ -125,7 +135,7 @@ class ConcaveSurfaceGeometry extends THREE.BufferGeometry {
     this.uvs = [];
     this.cPoints = this.markSurfacePoints(cPoints);
 
-    this.bfsTraverseConnect();
+    this.makeFaces();
     this.setIndex(this.indices);
     this.setAttribute(
       "position",
@@ -136,6 +146,19 @@ class ConcaveSurfaceGeometry extends THREE.BufferGeometry {
       new THREE.Float32BufferAttribute(this.normals, 3)
     );
     // this.setAttribute("uv", new THREE.Float32BufferAttribute(this.uvs, 2));
+  }
+
+  computeCenter(cPoints) {
+    let x = 0,
+      y = 0,
+      z = 0;
+    const len = cPoints.length;
+    cPoints.forEach((point) => {
+      x += point.x;
+      y += point.y;
+      z += point.z;
+    });
+    return new THREE.Vector3(x / len, y / len, z / len);
   }
 
   markSurfacePoints(cPoints) {
@@ -157,7 +180,7 @@ class ConcaveSurfaceGeometry extends THREE.BufferGeometry {
    * @return {*}
    * @memberof ConcaveSurfaceGeometry
    */
-  bfsTraverseConnect() {
+  makeFaces() {
     const visitedMap = new Map();
     const len = this.cPoints.length;
     for (let i = 0; i < this.cPoints.length; i++) {
@@ -168,12 +191,48 @@ class ConcaveSurfaceGeometry extends THREE.BufferGeometry {
       if (visitedMap.get(i)) continue;
       A.edges = [];
       visitedMap.set(i, A);
-      const facesDict = this.getFacesOf(A);
-      for (let fKey in facesDict) {
-        const face = facesDict[fKey];
-        this.addFace(face);
-      }
+      const faces = this.getFacesOf(A);
+      faces.forEach((face) => {
+        const moreFaces = this.smoothing(face);
+        moreFaces.forEach((face1) => {
+          this.addFace(face1);
+        });
+      });
     }
+  }
+
+  smoothing(face) {
+    let { smoothness, coefficient, maxOffset } = this.options;
+    let faces = [face];
+    for (let s = 0; s < smoothness; s += 1) {
+      const coef = coefficient * Math.pow(s + 1, -1);
+      const mOffset = maxOffset * Math.pow(s + 1, -1);
+      const newFaces = [];
+      for (let i = 0; i < faces.length; i += 1) {
+        const newFace = faces[i];
+        const { p1, p2, p3 } = newFace;
+        const r = p1.distanceTo(newFace.midpoint);
+        if (r < 0.1) break;
+        const modulus = Math.min(coef * r, mOffset);
+        const normal = newFace.normal;
+        const { x: nx0, y: ny0, z: nz0 } = normal;
+        const newNormal = new THREE.Vector3(
+          nx0 * modulus,
+          ny0 * modulus,
+          nz0 * modulus
+        );
+        const { x: nx, y: ny, z: nz } = newNormal;
+        const { x: x0, y: y0, z: z0 } = newFace.midpoint;
+        const p0 = new THREE.Vector3(nx + x0, ny + y0, nz + z0);
+        newFaces.push(
+          this.getFace(p1, p2, p0),
+          this.getFace(p0, p2, p3),
+          this.getFace(p1, p0, p3)
+        );
+      }
+      faces = newFaces;
+    }
+    return faces;
   }
 
   /**
@@ -205,7 +264,7 @@ class ConcaveSurfaceGeometry extends THREE.BufferGeometry {
    */
   getFacesOf(A) {
     const { x, y, z } = A;
-    const facesDict = {};
+    const facesLi = [];
     const points = {
       A: [x, y, z],
       B: [x + 1, y, z],
@@ -230,7 +289,7 @@ class ConcaveSurfaceGeometry extends THREE.BufferGeometry {
     if (pointsLi.length >= 4) {
       if (THREE.ConvexHull === undefined) {
         console.error(
-          "THREE.ConvexBufferGeometry: ConvexBufferGeometry relies on THREE.ConvexHull"
+          "THREE.ConcaveSurfaceGeometry: ConvexBufferGeometry relies on THREE.ConvexHull"
         );
       }
 
@@ -247,7 +306,8 @@ class ConcaveSurfaceGeometry extends THREE.BufferGeometry {
         if (p1.y === p2.y && p2.y === p3.y && p3.y === y + 1) return;
         if (p1.z === p2.z && p2.z === p3.z && p3.z === z + 1) return;
 
-          facesDict[index] = this.getFace(p1, p2, p3);
+        // facesLi.push(this.getFace(p1, p2, p3));
+        facesLi.push(this.getFace(p3, p2, p1));
       });
     }
 
@@ -273,15 +333,15 @@ class ConcaveSurfaceGeometry extends THREE.BufferGeometry {
     // if (B1 && A1) {
     //   facesDict.AB1A1 = this.getFace(A, B1, A1);
     // }
-    return facesDict;
+    return facesLi;
   }
 
   getFace(p1, p2, p3) {
     this.getEdge(p1, p2);
     this.getEdge(p2, p3);
     this.getEdge(p3, p1);
-    const face = new Face(p1, p2, p3);
-    this.faces.push(face);
+    const face = new Face(p1, p2, p3, this.center);
+
     return face;
   }
 
@@ -310,6 +370,7 @@ class ConcaveSurfaceGeometry extends THREE.BufferGeometry {
     this.indices.push(face.p1.vIndex, face.p2.vIndex, face.p3.vIndex);
     const { x, y, z } = face.normal;
     this.normals.push(x, y, z, x, y, z, x, y, z);
+    this.faces.push(face);
   }
 }
 
@@ -321,264 +382,28 @@ class Edge {
 }
 
 class Face {
-  constructor(p1, p2, p3) {
+  constructor(p1, p2, p3, center) {
     this.p1 = p1;
     this.p2 = p2;
     this.p3 = p3;
     this.normal = new THREE.Vector3();
     this.midpoint = new THREE.Vector3();
+    this.newTrangle(p1, p2, p3);
+    const centerToMid = new THREE.Vector3(
+      this.midpoint.x - center.x,
+      this.midpoint.y - center.y,
+      this.midpoint.z - center.z
+    );
+    const radian = this.midpoint.angleTo(centerToMid);
+    const angle = THREE.Math.radToDeg(radian);
+    if (angle > Math.PI) {
+      this.newTrangle(p3, p2, p1);
+    }
+  }
+  newTrangle(p1, p2, p3) {
     const triangle = new THREE.Triangle();
     triangle.set(p1, p2, p3);
     triangle.getNormal(this.normal);
     triangle.getMidpoint(this.midpoint);
-  }
-}
-
-class TestBoxGeometry extends THREE.BufferGeometry {
-  constructor(
-    width = 1,
-    height = 1,
-    depth = 1,
-    widthSegments = 1,
-    heightSegments = 1,
-    depthSegments = 1
-  ) {
-    super();
-
-    this.type = "BoxGeometry";
-
-    this.parameters = {
-      width: width,
-      height: height,
-      depth: depth,
-      widthSegments: widthSegments,
-      heightSegments: heightSegments,
-      depthSegments: depthSegments,
-    };
-
-    const scope = this;
-
-    // segments
-
-    widthSegments = Math.floor(widthSegments);
-    heightSegments = Math.floor(heightSegments);
-    depthSegments = Math.floor(depthSegments);
-
-    // buffers
-
-    const indices = [];
-    const vertices = [];
-    const normals = [];
-    const uvs = [];
-
-    // helper variables
-
-    let numberOfVertices = 0;
-    let groupStart = 0;
-
-    // build each side of the box geometry
-
-    buildPlane(
-      "z",
-      "y",
-      "x",
-      -1,
-      -1,
-      depth,
-      height,
-      width,
-      depthSegments,
-      heightSegments,
-      0
-    ); // px
-    buildPlane(
-      "z",
-      "y",
-      "x",
-      1,
-      -1,
-      depth,
-      height,
-      -width,
-      depthSegments,
-      heightSegments,
-      1
-    ); // nx
-    buildPlane(
-      "x",
-      "z",
-      "y",
-      1,
-      1,
-      width,
-      depth,
-      height,
-      widthSegments,
-      depthSegments,
-      2
-    ); // py
-    buildPlane(
-      "x",
-      "z",
-      "y",
-      1,
-      -1,
-      width,
-      depth,
-      -height,
-      widthSegments,
-      depthSegments,
-      3
-    ); // ny
-    buildPlane(
-      "x",
-      "y",
-      "z",
-      1,
-      -1,
-      width,
-      height,
-      depth,
-      widthSegments,
-      heightSegments,
-      4
-    ); // pz
-    buildPlane(
-      "x",
-      "y",
-      "z",
-      -1,
-      -1,
-      width,
-      height,
-      -depth,
-      widthSegments,
-      heightSegments,
-      5
-    ); // nz
-
-    // build geometry
-
-    this.setIndex(indices);
-    this.setAttribute(
-      "position",
-      new THREE.Float32BufferAttribute(vertices, 3)
-    );
-    this.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
-    // this.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
-
-    function buildPlane(
-      u,
-      v,
-      w,
-      udir,
-      vdir,
-      width,
-      height,
-      depth,
-      gridX,
-      gridY,
-      materialIndex
-    ) {
-      // width 边长 gridX 分成多少段 segmentWidth 每段多长
-      const segmentWidth = width / gridX;
-      const segmentHeight = height / gridY;
-
-      const widthHalf = width / 2;
-      const heightHalf = height / 2;
-      const depthHalf = depth / 2;
-
-      const gridX1 = gridX + 1;
-      const gridY1 = gridY + 1;
-
-      let vertexCounter = 0;
-      let groupCount = 0;
-
-      const vector = new THREE.Vector3();
-
-      // generate vertices, normals and uvs
-
-      for (let iy = 0; iy < gridY1; iy++) {
-        const y = iy * segmentHeight - heightHalf;
-
-        for (let ix = 0; ix < gridX1; ix++) {
-          const x = ix * segmentWidth - widthHalf;
-
-          // set values to correct vector component
-
-          vector[u] = x * udir;
-          vector[v] = y * vdir;
-          vector[w] = depthHalf;
-
-          // now apply vector to vertex buffer
-
-          vertices.push(vector.x, vector.y, vector.z);
-
-          // set values to correct vector component
-
-          vector[u] = 0;
-          vector[v] = 0;
-          vector[w] = depth > 0 ? 1 : -1;
-
-          // now apply vector to normal buffer
-
-          normals.push(vector.x, vector.y, vector.z);
-
-          // uvs
-          uvs.push(ix / gridX);
-          uvs.push(1 - iy / gridY);
-
-          // counters
-
-          vertexCounter += 1;
-        }
-      }
-
-      // indices
-
-      // 1. you need three indices to draw a single face
-      // 2. a single segment consists of two faces
-      // 3. so we need to generate six (2*3) indices per segment
-
-      for (let iy = 0; iy < gridY; iy++) {
-        for (let ix = 0; ix < gridX; ix++) {
-          const a = numberOfVertices + ix + gridX1 * iy;
-          const b = numberOfVertices + ix + gridX1 * (iy + 1);
-          const c = numberOfVertices + (ix + 1) + gridX1 * (iy + 1);
-          const d = numberOfVertices + (ix + 1) + gridX1 * iy;
-
-          // faces
-
-          indices.push(a, b, d);
-          indices.push(b, c, d);
-
-          // increase counter
-          groupCount += 6;
-        }
-      }
-
-      // add a group to the geometry. this will ensure multi material support
-
-      scope.addGroup(groupStart, groupCount, materialIndex);
-
-      // calculate new start value for groups
-
-      groupStart += groupCount;
-
-      // update total number of vertices
-
-      numberOfVertices += vertexCounter;
-    }
-  }
-
-  static fromJSON(data) {
-    return new TestBoxGeometry(
-      data.width,
-      data.height,
-      data.depth,
-      data.widthSegments,
-      data.heightSegments,
-      data.depthSegments
-    );
   }
 }
