@@ -10,8 +10,10 @@ const BOX_POINTS = {
 };
 
 const lackingBoxMap = new Map([
-  [8, ["ABFE", "BCGF", "CDHG", "DAEH", "ADCB", "FGHE"]],
-  [7, ["ABFE", "BCGF", "CDHG", "DAEH", "ADCB", "FGHE"]],
+  [0, ["ABFE", "BCGF", "CDHG", "DAEH", "ADCB", "FGHE"]],
+  [1, ["ABFE", "FBC", "FCH", "HEF", "HCD", "HDAE", "ADCB"]],
+  [20, ["ABE", "CDH", "DAEH", "ADCB", "EBCH"]],
+  [21, ["ABE", "DHG", "DAEH", "ADB", "GHE", "GBD", "EBG"]],
 ]);
 
 /**
@@ -77,37 +79,63 @@ const getTriangleLongMidpoint = (points) => {
   for (let i = 0; i < 3; i += 1) {
     const p1 = points[i];
     const p2 = points[(i + 1) % 3];
+    const p3 = points[(i + 2) % 3]; // p3 和中点不相邻
 
     const length = p1.distanceTo(p2);
     // √3肯定是最长边
-    if (floatCompare(length, "==", Math.sqrt(3), 0.001)) {
-      maxObj = { length, p1, p2 };
+    if (floatCompare(length, "=", Math.sqrt(3), 0.001)) {
+      maxObj = { length, p1, p2, p3 };
       break;
     } else {
       if (floatCompare(length, ">", maxObj.length)) {
-        maxObj = { length, p1, p2 };
+        maxObj = { length, p1, p2, p3 };
       }
     }
   }
-  const { p1, p2 } = maxObj;
-  return getSegmentMidPoints(p1, p2);
+  const { p1, p2, p3 } = maxObj;
+  const p0 = getSegmentMidPoints(p1, p2);
+  return [p0, p1, p2, p3];
+};
+
+/**
+ * 判断三点共线
+ * @param {*} p1
+ * @param {*} p2
+ * @param {*} p3
+ */
+const isCollinear = (p1, p2, p3) => {
+  const {
+    x: x1,
+    y: y1,
+    z: z1,
+  } = new THREE.Vector3().subVectors(p1, p2).normalize();
+  const {
+    x: x2,
+    y: y2,
+    z: z2,
+  } = new THREE.Vector3().subVectors(p1, p3).normalize();
+  return (
+    floatCompare(x1 - x2, "=", 0, 0.001) &&
+    floatCompare(y1 - y2, "=", 0, 0.001) &&
+    floatCompare(z1 - z2, "=", 0, 0.001)
+  );
 };
 
 class LackingBoxGeometry extends THREE.BufferGeometry {
-  constructor(points) {
+  constructor(O, points) {
     super();
     this.type = "LackingBoxGeometry";
     this.indices = [];
     this.vertices = [];
     this.normals = [];
 
-    this.center = this.computeCenter(points); // 几何重心
     this.faces = [];
     this.facesMap = new Map();
     this.pointsMap = new Map();
     const faces = this.getDrawFaces(points);
+    this.center = this.computeCenter(faces); // 几何重心
     this.createAllFaces(faces);
-    this.addFaces();
+    this.addFaces(O);
 
     this.setIndex(this.indices);
     this.setAttribute(
@@ -124,7 +152,9 @@ class LackingBoxGeometry extends THREE.BufferGeometry {
     return BOX_POINTS;
   }
 
-  computeCenter(points) {
+  computeCenter(faces) {
+    let points = Array.from(new Set(faces.join("").split("")));
+    points = points.map((point) => BOX_POINTS[point]);
     let x = 0,
       y = 0,
       z = 0;
@@ -138,7 +168,11 @@ class LackingBoxGeometry extends THREE.BufferGeometry {
   }
 
   getDrawFaces(points) {
-    return lackingBoxMap.get(8);
+    if ((points === "ABCDEFGH")) return lackingBoxMap.get(0);
+    if ((points === "ABCDEFH")) return lackingBoxMap.get(1);
+    if ((points === "ABCDEH")) return lackingBoxMap.get(20);
+    if ((points === "ABDEGH")) return lackingBoxMap.get(21);
+    
   }
 
   createAllFaces(faces) {
@@ -154,13 +188,13 @@ class LackingBoxGeometry extends THREE.BufferGeometry {
       }
     });
   }
-  addFaces() {
+  addFaces(O) {
     this.facesMap.forEach((face) => {
       if (!face) return;
       const [p1, p2, p3] = face.points;
-      const i1 = this.vertices.push(p1.x, p1.y, p1.z) / 3 - 1;
-      const i2 = this.vertices.push(p2.x, p2.y, p2.z) / 3 - 1;
-      const i3 = this.vertices.push(p3.x, p3.y, p3.z) / 3 - 1;
+      const i1 = this.vertices.push(p1.x + O.x, p1.y + O.y, p1.z + O.z) / 3 - 1;
+      const i2 = this.vertices.push(p2.x + O.x, p2.y + O.y, p2.z + O.z) / 3 - 1;
+      const i3 = this.vertices.push(p3.x + O.x, p3.y + O.y, p3.z + O.z) / 3 - 1;
       this.indices.push(i1, i2, i3);
       const { x, y, z } = face.normal;
       this.normals.push(x, y, z, x, y, z, x, y, z);
@@ -231,16 +265,15 @@ class LackingBoxGeometry extends THREE.BufferGeometry {
    *  ┃    p0
    *  ┃  /    \
    *  ┃/        \
-   * p2▔▔▔▔▔▔p3
+   * p3▔▔▔▔▔▔p2
    *
    * @param {Array<THREE.Vector3>} points [p1, p2, p3]
    * @memberof lackingBoxGeometry
    */
   addBigTriangle(points) {
-    const [p1, p2, p3] = points;
-    const p0 = getTriangleLongMidpoint(points);
-    this.addSmallTriangle(p1, p2, p0);
-    this.addSmallTriangle(p0, p2, p3);
+    const [p0, p1, p2, p3] = getTriangleLongMidpoint(points);
+    this.addSmallTriangle(p0, p1, p3);
+    this.addSmallTriangle(p0, p3, p2);
   }
 
   /**
@@ -315,34 +348,30 @@ class SmallTriangle {
    */
   constructor(p1, p2, p3, center) {
     this.type = "SmallTriangle";
-    this.children = [];
-    this.points = [p1, p2, p3];
     this.normal = new THREE.Vector3();
     this.midpoint = new THREE.Vector3();
+    this.createTriangle(p1, p2, p3);
+    if (this.isCounterclockwise(center)) {
+      this.createTriangle(p3, p2, p1);
+    }
+  }
 
-    let triangle = new THREE.Triangle();
-    this.triangle = triangle;
-    triangle.set(p1, p2, p3);
-    triangle.getNormal(this.normal);
-    triangle.getMidpoint(this.midpoint);
-    console.log("====", p1, p2, p3);
-    // console.log("this.midpoint=", this.midpoint, "center=", center);
+  isCounterclockwise(center) {
     const centerToMid = new THREE.Vector3(
       this.midpoint.x - center.x,
       this.midpoint.y - center.y,
       this.midpoint.z - center.z
     );
-    console.log("normal=", this.normal, "centerToMid=", centerToMid);
     const radian = centerToMid.angleTo(this.normal);
     const angle = THREE.Math.radToDeg(radian);
-    console.log("radian=", radian, "angle=", angle);
-    if (angle > 90) {
-      this.points = [p3, p2, p1];
-      triangle = new THREE.Triangle();
-      triangle.set(p1, p2, p3);
-      triangle.getNormal(this.normal);
-      triangle.getMidpoint(this.midpoint);
-      this.triangle = triangle;
-    }
+    return floatCompare(angle, ">=", 90, 0.001);
+  }
+
+  createTriangle(p1, p2, p3) {
+    this.points = [p1, p2, p3];
+    this.triangle = new THREE.Triangle();
+    this.triangle.set(p1, p2, p3);
+    this.triangle.getNormal(this.normal);
+    this.triangle.getMidpoint(this.midpoint);
   }
 }
