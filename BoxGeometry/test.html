@@ -11,7 +11,7 @@
       }
     </style>
     <!--引入three.js三维引擎-->
-    <script src="http://www.yanhuangxueyuan.com/threejs/build/three.js"></script>
+    <script src="../three.js-master/build/three.js"></script>
   </head>
 
   <body>
@@ -27,11 +27,11 @@
       // var geometry = new THREE.SphereGeometry(60, 40, 40); //创建一个球体几何对象
       var geometry = new THREE.BoxGeometry(
         100,
-        200,
-        300,
-        (widthSegments = 2),
-        (heightSegments = 3),
-        (depthSegments = 4)
+        100,
+        100,
+        (widthSegments = 1),
+        (heightSegments = 1),
+        (depthSegments = 1)
       ); //创建一个立方体几何对象Geometry
       var material = new THREE.MeshLambertMaterial({
         // Mesh:网格

@@ -348,11 +348,11 @@ class Face {
       this.midpoint.y - center.y,
       this.midpoint.z - center.z
     );
-    // const radian = this.midpoint.angleTo(centerToMid);
-    // const angle = THREE.Math.radToDeg(radian);
-    // if (angle > Math.PI) {
-    //   this.newTriangle(p3, p2, p1);
-    // }
+    const radian = this.midpoint.angleTo(centerToMid);
+    const angle = THREE.Math.radToDeg(radian);
+    if (angle > Math.PI) {
+      this.newTriangle(p3, p2, p1);
+    }
   }
   newTriangle(p1, p2, p3) {
     const triangle = new THREE.Triangle();
