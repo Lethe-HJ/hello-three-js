@@ -19,8 +19,8 @@
 
   <body>
     <script>
-      const IsoSurfaceLevel = 2;
-      const precision = 0.5;
+      const IsoSurfaceLevel = 1;
+      const precision = 1;
       let geometry111;
       let sideLen = 48;
       // sideLen = 5;
@@ -35,7 +35,11 @@
         (value) => Math.abs(value - IsoSurfaceLevel) < precision
       );
       pointsLi.forEach((points, idx) => {
-        let geometry1 = new ConcaveSurfaceGeometry(points, sideLen);
+        let geometry1 = new ConcaveSurfaceGeometry(points, sideLen, {
+          smoothness: 2,
+          coefficient: 0.4,
+          maxOffset: 0.1,
+        });
         const redPoints = geometry1.surfacePoints;
         if (redPoints.length < 4) return;
         geometry111 = geometry1;
@@ -53,10 +57,10 @@
         var material2 = new THREE.PointsMaterial({
           // color: 0xffffff * Math.random() * 255,
           color: 0xff0000,
-          size: 5.0,
+          size: 1.0,
         });
         var pointsObj = new THREE.Points(geometry2, material2);
-        // scene.add(pointsObj);
+        scene.add(pointsObj);
       });
 
       // 辅助坐标系   老版本AxisHelper 新版本AxesHelper
@@ -68,7 +72,10 @@
       // 通过add方法插入场景中，不插入的话，渲染的时候不会获取光源的信息进行光照计算
       scene.add(point); //点光源添加到场景中
       //环境光    环境光颜色与网格模型的颜色进行RGB进行乘法运算
-      const ambient = new THREE.AmbientLight(0x444444);
+      const ambient = new THREE.AmbientLight(
+        (color = "0xffffff"),
+        (intensity = 0.5)
+      );
       scene.add(ambient);
 
       /**

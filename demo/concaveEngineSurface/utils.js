@@ -243,22 +243,6 @@ class ConcaveSurfaceGeometry extends THREE.BufferGeometry {
    * B--|-----C  |
    *  \ |      \ |
    *    A--------D
-   * 外部四角面ABCD ==> ABC ACD
-   * 外部四角面AA1D1D ==> AA1D1 AD1D
-   * 外部四角面ABB1A1 ==> ABB1 AB1A1
-   * 内部四角面ABC1D1 ==> ABC1 AC1D1 ((!A1&!B1) ||(!D&!C))
-   * 内部四角面A1B1CD ==> A1B1C A1CD ((!A&!B) ||(!D1&!C1))
-   * 内部四角面AA1C1C ==> AA1C1 AC1C ((!D1&!D) ||(!B1&!B))
-   * 内部四角面BB1D1D ==> BB1D1 BD1D ((!C1&!C) ||(!A1&!A))
-   * 内部四角面AB1C1D ==> AB1C1 AC1D ((!A1&!D1) ||(!B&!C))
-   * 内部四角面BA1D1C ==> BA1D1 BD1C ((!A&!D) ||(!B1&!C1))
-   * 内部三角面ACB1 !B
-   * 内部三角面BDC1 !C
-   * 内部三角面AD1C !D
-   * 内部三角面AB1D1 !A1
-   * 内部三角面BC1A1 !B1
-   * 内部三角面CD1B1 !C1
-   * 内部三角面DA1C1 !D1
    * @param {*} A
    * @returns
    */
@@ -302,37 +286,14 @@ class ConcaveSurfaceGeometry extends THREE.BufferGeometry {
         const p2 = edge.vertex.point;
         edge = edge.next;
         const p3 = edge.vertex.point;
-        if (p1.x === p2.x && p2.x === p3.x && p3.x === x + 1) return;
-        if (p1.y === p2.y && p2.y === p3.y && p3.y === y + 1) return;
-        if (p1.z === p2.z && p2.z === p3.z && p3.z === z + 1) return;
+        // if (p1.x === p2.x && p2.x === p3.x && p3.x === x + 1) return;
+        // if (p1.y === p2.y && p2.y === p3.y && p3.y === y + 1) return;
+        // if (p1.z === p2.z && p2.z === p3.z && p3.z === z + 1) return;
 
-        // facesLi.push(this.getFace(p1, p2, p3));
-        facesLi.push(this.getFace(p3, p2, p1));
+        facesLi.push(this.getFace(p1, p2, p3));
       });
     }
 
-    // const { B, C, D, A1, B1, C1, D1 } = points;
-    // // 外部四角面ABCD
-    // if (B && C) {
-    //   facesDict.ABC = this.getFace(A, B, C);
-    // }
-    // if (C && D) {
-    //   facesDict.ACD = this.getFace(A, C, D);
-    // }
-    // // 外部四角面AA1D1D
-    // if (A1 && D1) {
-    //   facesDict.AA1D1 = this.getFace(A, A1, D1);
-    // }
-    // if (D1 && D) {
-    //   facesDict.AD1D = this.getFace(A, D1, D);
-    // }
-    // // 外部四角面ABB1A1
-    // if (B && B1) {
-    //   facesDict.ABB1 = this.getFace(A, B, B1);
-    // }
-    // if (B1 && A1) {
-    //   facesDict.AB1A1 = this.getFace(A, B1, A1);
-    // }
     return facesLi;
   }
 
@@ -345,14 +306,7 @@ class ConcaveSurfaceGeometry extends THREE.BufferGeometry {
     return face;
   }
 
-  getPoint(p) {
-    const { x, y, z } = p;
-    return p;
-  }
-
   getEdge(begin, end) {
-    begin = this.getPoint(begin);
-    end = this.getPoint(end);
     const edgeKey = `${begin.index}_${end.index}`;
     let edge = this.edgesMap.get(edgeKey);
     if (!edge) {
@@ -388,19 +342,19 @@ class Face {
     this.p3 = p3;
     this.normal = new THREE.Vector3();
     this.midpoint = new THREE.Vector3();
-    this.newTrangle(p1, p2, p3);
+    this.newTriangle(p1, p2, p3);
     const centerToMid = new THREE.Vector3(
       this.midpoint.x - center.x,
       this.midpoint.y - center.y,
       this.midpoint.z - center.z
     );
-    const radian = this.midpoint.angleTo(centerToMid);
-    const angle = THREE.Math.radToDeg(radian);
-    if (angle > Math.PI) {
-      this.newTrangle(p3, p2, p1);
-    }
+    // const radian = this.midpoint.angleTo(centerToMid);
+    // const angle = THREE.Math.radToDeg(radian);
+    // if (angle > Math.PI) {
+    //   this.newTriangle(p3, p2, p1);
+    // }
   }
-  newTrangle(p1, p2, p3) {
+  newTriangle(p1, p2, p3) {
     const triangle = new THREE.Triangle();
     triangle.set(p1, p2, p3);
     triangle.getNormal(this.normal);

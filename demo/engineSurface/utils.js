@@ -989,7 +989,7 @@ class SmoothConvexGeometry {
   constructor(
     points,
     options = {
-      smoothness: 5,
+      smoothness: 0,
       coefficient: 0.4,
       maxOffset: 0.1,
     }
