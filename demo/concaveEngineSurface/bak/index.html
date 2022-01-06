@@ -11,18 +11,58 @@
     </style>
     <script src="../../three.js-master/build/three.js"></script>
     <script src="../../three.js-master/examples/js/controls/OrbitControls.js"></script>
+    <script src="../../three.js-master/examples/js/math/ConvexHull.js"></script>
+    <script src="../../three.js-master/examples/js/geometries/ConvexGeometry.js"></script>
     <script src="./CHGCAR.js"></script>
-    <script src="../LackingBoxGeometry/index.js"></script>
     <script src="./utils.js"></script>
-    <script src="./index.js"></script>
-    <script src="./test.js"></script>
-
   </head>
 
   <body>
     <script>
+      const IsoSurfaceLevel = 1;
+      const precision = 1;
+      let geometry111;
+      let sideLen = 48;
+      // sideLen = 5;
+      /**
+       * 创建场景对象Scene
+       */
       const scene = new THREE.Scene();
-      test(scene);
+      const data1 = new Array(Math.pow(sideLen, 3)).fill(2);
+      const pointsLi = generateSplitPoints(
+        data,
+        sideLen,
+        (value) => Math.abs(value - IsoSurfaceLevel) < precision
+      );
+      pointsLi.forEach((points, idx) => {
+        let geometry1 = new ConcaveSurfaceGeometry(points, sideLen, {
+          smoothness: 2,
+          coefficient: 0.4,
+          maxOffset: 0.1,
+        });
+        const redPoints = geometry1.surfacePoints;
+        if (redPoints.length < 4) return;
+        geometry111 = geometry1;
+        const material1 = new THREE.MeshLambertMaterial({
+          color: 0xffc0cb,
+          // color: 0xff0000,
+          side: THREE.DoubleSide, //两面可见
+          // wireframe: true,
+        }); //材质对象
+        const mesh = new THREE.Mesh(geometry1, material1); //网格模型对象
+        scene.add(mesh);
+
+        var geometry2 = new THREE.BufferGeometry();
+        geometry2.setFromPoints(redPoints);
+        var material2 = new THREE.PointsMaterial({
+          // color: 0xffffff * Math.random() * 255,
+          color: 0xff0000,
+          size: 1.0,
+        });
+        var pointsObj = new THREE.Points(geometry2, material2);
+        scene.add(pointsObj);
+      });
+
       // 辅助坐标系   老版本AxisHelper 新版本AxesHelper
       const axisHelper = new THREE.AxesHelper(250);
       scene.add(axisHelper);
@@ -32,13 +72,16 @@
       // 通过add方法插入场景中，不插入的话，渲染的时候不会获取光源的信息进行光照计算
       scene.add(point); //点光源添加到场景中
       //环境光    环境光颜色与网格模型的颜色进行RGB进行乘法运算
-      const ambient = new THREE.AmbientLight(0x444444);
+      const ambient = new THREE.AmbientLight(
+        (color = "0xffffff"),
+        (intensity = 0.5)
+      );
       scene.add(ambient);
 
       /**
        * 相机设置
        */
-       const width = window.innerWidth; //窗口宽度
+      const width = window.innerWidth; //窗口宽度
       const height = window.innerHeight; //窗口高度
       const k = width / height; //窗口宽高比
       const s = 150; //三维场景显示范围控制系数，系数越大，显示的范围越大

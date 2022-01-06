@@ -1,15 +1,13 @@
 const boxPoints = LackingBoxGeometry.getPoints();
 
 const createPoints = (
-  points,
   option = {
     color: 0xff0000,
-    size: 2.0,
+    size: 5.0,
   }
 ) => {
   const geometry = new THREE.BufferGeometry();
-  geometry.setFromPoints(points);
-  window.points = geometry;
+  geometry.setFromPoints(Object.values(boxPoints));
   const material = new THREE.PointsMaterial(option);
   return new THREE.Points(geometry, material);
 };
@@ -26,22 +24,6 @@ const createLackingBox = (x, y, z, pointNames) => {
 
   const material = new THREE.MeshPhongMaterial({
     color: 0x00ffff,
-    side: THREE.DoubleSide, //两面可见
-    // wireframe: true,
-  });
-
-  mesh = new THREE.Mesh(geometry, material);
-  window.mesh = mesh;
-  return mesh;
-};
-
-const createLackingBox2 = (O, points) => {
-  const geometry = new LackingBoxGeometry(O, points);
-
-  window.geometry = geometry;
-
-  const material = new THREE.MeshPhongMaterial({
-    color: 0xff0000,
     // side: THREE.DoubleSide, //两面可见
     // wireframe: true,
   });
@@ -51,18 +33,8 @@ const createLackingBox2 = (O, points) => {
   return mesh;
 };
 
-const vector = (x, y, z) => {
-  return new THREE.Vector3(x, y, z);
-};
-
 const test = (scene) => {
-  const points = [
-    vector(45, 4, 47),
-    vector(45, 4, 46),
-    vector(44, 3, 47),
-    vector(45, 3, 46),
-  ];
-  scene.add(createPoints(points));
+  scene.add(createPoints());
   scene.add(createLackingBox(0, 0, 0, ""));
   scene.add(createLackingBox(0, 0, 3, "G"));
   scene.add(createLackingBox(3, 0, 0, "FG"));
@@ -75,6 +47,4 @@ const test = (scene) => {
   scene.add(createLackingBox(12, 0, 0, "CDFG"));
   scene.add(createLackingBox(9, 0, 3, "BEFG"));
   scene.add(createLackingBox(12, 0, 3, "BDEG"));
-  // scene.add(createLackingBox(0, 0, 0, "ADFH"));
-  // scene.add(createLackingBox2(vector(45, 4, 47), points));
 };
