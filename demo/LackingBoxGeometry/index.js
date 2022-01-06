@@ -35,18 +35,28 @@ const lackingBoxMap = new Map([
   ["BEFG", ["HAC", "CDH", "DAH", "ADC"]], // BEFG
   ["BDEG", ["ACF", "FCH", "HAF", "HCA"]], // BDEG
 ]);
+// const coordMapping = new Map([
+//   // 绕x,y,z分别旋转90 180 270 最后一个是对顶点
+//   ["A", ["D", "H", "E", "B", "C", "D", "B", "F", "E", "G"]],
+//   ["B", ["C", "G", "F", "C", "D", "A", "F", "E", "A", "H"]],
+//   ["C", ["G", "F", "B", "D", "A", "B", "G", "H", "D", "E"]],
+//   ["D", ["H", "E", "A", "A", "B", "C", "C", "G", "H", "F"]],
+//   ["E", ["A", "D", "H", "F", "G", "H", "A", "B", "F", "C"]],
+//   ["F", ["B", "C", "G", "G", "H", "E", "E", "A", "B", "D"]],
+//   ["G", ["F", "B", "C", "H", "E", "F", "H", "D", "C", "A"]],
+//   ["H", ["E", "A", "D", "E", "F", "G", "D", "C", "G", "B"]],
+// ]);
 const coordMapping = new Map([
   // 绕x,y,z分别旋转90 180 270 最后一个是对顶点
-  ["A", ["D", "H", "E", "B", "C", "D", "B", "F", "E", "G"]],
-  ["B", ["C", "G", "F", "C", "D", "A", "F", "E", "A", "H"]],
-  ["C", ["G", "F", "B", "D", "A", "B", "G", "H", "D", "E"]],
-  ["D", ["H", "E", "A", "A", "B", "C", "C", "G", "H", "F"]],
-  ["E", ["A", "D", "H", "F", "G", "H", "A", "B", "F", "C"]],
-  ["F", ["B", "C", "G", "G", "H", "E", "E", "A", "B", "D"]],
-  ["G", ["F", "B", "C", "H", "E", "F", "H", "D", "C", "A"]],
-  ["H", ["E", "A", "D", "E", "F", "G", "D", "C", "G", "B"]],
+  ["A", ["D", "H", "E", "B", "C", "D", "B", "F", "E"]],
+  ["B", ["C", "G", "F", "C", "D", "A", "F", "E", "A"]],
+  ["C", ["G", "F", "B", "D", "A", "B", "G", "H", "D"]],
+  ["D", ["H", "E", "A", "A", "B", "C", "C", "G", "H"]],
+  ["E", ["A", "D", "H", "F", "G", "H", "A", "B", "F"]],
+  ["F", ["B", "C", "G", "G", "H", "E", "E", "A", "B"]],
+  ["G", ["F", "B", "C", "H", "E", "F", "H", "D", "C"]],
+  ["H", ["E", "A", "D", "E", "F", "G", "D", "C", "G"]],
 ]);
-
 /**
  * compare two float with operator ">, <, =, >=, <= ,!="
  * @param {*} operandA
@@ -243,15 +253,18 @@ class LackingBoxGeometry extends THREE.BufferGeometry {
 
     this.O = O;
     this.faces = [];
-    this.facesMap = option.facesMap || new Map();
+    this.facesMap = new Map();
+    // 部分面需要双面渲染
+    this.doubleFacesMap = new Map();
+    this.fatherFacesMap = option.fatherFacesMap || new Map();
     this.pointsMap = new Map();
     if (typeof points !== "string") {
       points = this.computeLackPoints(points);
     }
-    const faces = this.getDrawFaces(points);
-    if (faces.length) {
-      this.center = this.computeCenter(faces); // 几何重心
-      this.createAllFaces(faces);
+    const data = this.getDrawFaces(points);
+    if (data.faces.length) {
+      this.center = this.computeCenter(data.points); // 几何重心
+      this.createAllFaces(data.faces);
       this.addFaces(O);
       option.renderer && this.renderGeometry();
     }
@@ -286,14 +299,13 @@ class LackingBoxGeometry extends THREE.BufferGeometry {
     return lack.join("");
   }
 
-  computeCenter(faces) {
-    let points = Array.from(new Set(faces.join("").split("")));
-    points = points.map((point) => BOX_POINTS_MAPPING1[point]);
+  computeCenter(points) {
     let x = 0,
       y = 0,
       z = 0;
     const len = points.length;
-    points.forEach((point) => {
+    points.split("").forEach((item) => {
+      const point = BOX_POINTS_MAPPING1[item];
       x += point.x;
       y += point.y;
       z += point.z;
@@ -302,8 +314,8 @@ class LackingBoxGeometry extends THREE.BufferGeometry {
   }
 
   getDrawFaces(points) {
-    const origin = lackingBoxMap.get(points);
-    if (origin) return origin;
+    const faces = lackingBoxMap.get(points);
+    if (faces) return { faces, points };
     else {
       return this.mappingPoints(points);
     }
@@ -311,7 +323,7 @@ class LackingBoxGeometry extends THREE.BufferGeometry {
 
   mappingPoints(points) {
     // 最多只能缺4个点
-    if (points.length > 4) return [];
+    if (points.length > 4) return { faces: [], points };
     if (points.length === 4) {
       const newPoints = points.split("").map((item) => {
         const point = BOX_POINTS_MAPPING1[item];
@@ -321,15 +333,26 @@ class LackingBoxGeometry extends THREE.BufferGeometry {
       if (is4PointsCoplanar(...newPoints)) {
         const [{ key: i1 }, { key: i2 }, { key: i3 }, { key: i4 }] =
           getDiagonal(...newPoints);
-        // p1 p2 是对角
-        return [`${i1}${i2}${i3}`, `${i1}${i2}${i4}`];
+        // p1 p2 是对角 p3 p4也是对角度
+        const i132 = `${i1}${i3}${i2}`;
+        const i123 = `${i1}${i2}${i3}`;
+        const i124 = `${i1}${i2}${i4}`;
+        const i142 = `${i1}${i4}${i2}`;
+        if (this.doubleFacesMap.has(i132)) return { faces: [], points };
+        // "+i132"值用于避免i132对应的三角面在facesMap中被i123覆盖的情形
+        this.doubleFacesMap.set(i132, "+i132");
+        this.doubleFacesMap.set(i123, "+i123");
+        this.doubleFacesMap.set(i124, "+i124");
+        this.doubleFacesMap.set(i142, "+i142");
+        return { faces: [i132, i123, i124, i142], points };
       }
     }
     let i = 0;
     let faces = null;
     let mapping = null;
+    let newPoints = null;
     while (i < 10) {
-      let newPoints = "";
+      newPoints = "";
       for (let point of points) {
         mapping = coordMapping.get(point);
         newPoints += mapping[i];
@@ -339,14 +362,17 @@ class LackingBoxGeometry extends THREE.BufferGeometry {
       if (faces) break;
       i += 1;
     }
-    if (!faces) return [];
-    return faces.map((face) => {
-      let newFace = "";
-      for (let ch of face) {
-        newFace += coordMapping.get(ch)[i];
-      }
-      return newFace;
-    });
+    if (!faces) faces = [];
+    else {
+      faces = faces.map((face) => {
+        let newFace = "";
+        for (let ch of face) {
+          newFace += coordMapping.get(ch)[i];
+        }
+        return newFace;
+      });
+    }
+    return { faces, points: newPoints };
   }
 
   createAllFaces(faces) {
@@ -442,15 +468,36 @@ class LackingBoxGeometry extends THREE.BufferGeometry {
    * @memberof lackingBoxGeometry
    */
   addSmallTriangle(p1, p2, p3) {
-    const smallTriangle = new SmallTriangle(p1, p2, p3, this.center);
-    smallTriangle.index = this.computeKey(smallTriangle.points);
-    // 已经存在的面再次添加会将其值设置为null 换句话说 两次及两次以上添加的面即为重复面,不应该被渲染
-    let theFace = this.facesMap.get(smallTriangle.index);
-    if (theFace !== null) {
-      theFace = theFace === undefined ? smallTriangle : null;
-      this.facesMap.set(smallTriangle.index, theFace);
-      console.log(this.facesMap.size);
+    const index = this.computeKey([p1, p2, p3]);
+    const indexFix = this.doubleFacesMap.get(index);
+    const needDouble = Boolean(indexFix);
+    const smallTriangle = new SmallTriangle(
+      p1,
+      p2,
+      p3,
+      this.center,
+      needDouble
+    );
+    // 部分面需要双面渲染
+    if (needDouble) {
+      const fixedIndex = index + indexFix;
+      if (this.facesMap.has(fixedIndex)) {
+        return;
+      } else {
+        this.facesMap.set(fixedIndex, smallTriangle);
+      }
     }
+    // 已经存在的面再次添加会将其值设置为null 换句话说 两次及两次以上添加的面即为重复面,不应该被渲染
+    let theFace = this.fatherFacesMap.get(index);
+    if (theFace !== null) {
+      if (theFace === undefined) {
+        this.facesMap.set(index, smallTriangle);
+        this.fatherFacesMap.set(index, true);
+      } else {
+        this.fatherFacesMap.set(index, null);
+      }
+    }
+    // this.facesMap.set(index, smallTriangle);
     return;
   }
 
@@ -489,12 +536,13 @@ class SmallTriangle {
    * @param {THREE.Vector3} p2
    * @param {THREE.Vector3} p3
    */
-  constructor(p1, p2, p3, center) {
+  constructor(p1, p2, p3, center, needDouble = false) {
     this.type = "SmallTriangle";
     this.normal = new THREE.Vector3();
     this.midpoint = new THREE.Vector3();
     this.createTriangle(p1, p2, p3);
-    if (this.isCounterclockwise(center)) {
+    // 需要双面的情况就不需要纠正顺序
+    if (!needDouble && this.isCounterclockwise(center)) {
       this.createTriangle(p3, p2, p1);
     }
   }

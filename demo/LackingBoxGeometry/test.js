@@ -4,7 +4,7 @@ const createPoints = (
   points,
   option = {
     color: 0xff0000,
-    size: 2.0,
+    size: 5.0,
   }
 ) => {
   const geometry = new THREE.BufferGeometry();
@@ -55,6 +55,25 @@ const vector = (x, y, z) => {
   return new THREE.Vector3(x, y, z);
 };
 
+const mapPoints = (points) => {
+  let i = 0;
+  let faces = null;
+  let mapping = null;
+  let newPoints = null;
+  while (i < 10) {
+    newPoints = "";
+    for (let point of points) {
+      mapping = coordMapping.get(point);
+      newPoints += mapping[i];
+    }
+    newPoints = sortString(newPoints);
+    faces = lackingBoxMap.get(newPoints);
+    if (faces) break;
+    i += 1;
+  }
+  return newPoints
+};
+
 const test = (scene) => {
   const points = [
     vector(45, 4, 47),
@@ -62,19 +81,46 @@ const test = (scene) => {
     vector(44, 3, 47),
     vector(45, 3, 46),
   ];
-  scene.add(createPoints(points));
-  scene.add(createLackingBox(0, 0, 0, ""));
-  scene.add(createLackingBox(0, 0, 3, "G"));
-  scene.add(createLackingBox(3, 0, 0, "FG"));
-  scene.add(createLackingBox(3, 0, 3, "CF"));
-  scene.add(createLackingBox(3, 0, 6, "DF"));
-  scene.add(createLackingBox(6, 0, 0, "CFG"));
-  scene.add(createLackingBox(6, 0, 3, "BEG"));
-  scene.add(createLackingBox(6, 0, 6, "BCE"));
-  scene.add(createLackingBox(9, 0, 0, "ACFG"));
-  scene.add(createLackingBox(12, 0, 0, "CDFG"));
-  scene.add(createLackingBox(9, 0, 3, "BEFG"));
-  scene.add(createLackingBox(12, 0, 3, "BDEG"));
+  const common = [
+    // "",
+    // "A",
+    // "G",
+    // "FG",
+    // "BC"
+    "CF",
+    "CH",
+    // "DF",
+    // "CFG",
+    // "BEG",
+    // "BCE",
+    // "ACFG",
+    // "CDFG",
+    // "BEFG",
+    // "BDEG",
+  ];
+  common.forEach((item, index) => {
+    scene.add(
+      createLackingBox(
+        (index % 4) * 2,
+        (Math.floor(index / 4) % 4) * 2,
+        Math.floor(index / 16),
+        // mapPoints(item)
+        item
+      )
+    );
+  });
+  
+  // scene.add(createLackingBox(0, 0, 3, "G"));
+  // scene.add(createLackingBox(3, 0, 0, "FG"));
+  // scene.add(createLackingBox(3, 0, 3, "CF"));
+  // scene.add(createLackingBox(3, 0, 6, "DF"));
+  // scene.add(createLackingBox(6, 0, 0, "CFG"));
+  // scene.add(createLackingBox(6, 0, 3, "BEG"));
+  // scene.add(createLackingBox(6, 0, 6, "BCE"));
+  // scene.add(createLackingBox(9, 0, 0, "ACFG"));
+  // scene.add(createLackingBox(12, 0, 0, "CDFG"));
+  // scene.add(createLackingBox(9, 0, 3, "BEFG"));
+  // scene.add(createLackingBox(12, 0, 3, "BDEG"));
   // scene.add(createLackingBox(0, 0, 0, "ADFH"));
   // scene.add(createLackingBox2(vector(45, 4, 47), points));
 };

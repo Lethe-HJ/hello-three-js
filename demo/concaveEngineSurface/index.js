@@ -6,6 +6,8 @@ class ConcaveGeometry extends THREE.BufferGeometry {
     this.vertices = [];
     this.normals = [];
 
+    // 记录子box的面是否已经注册过
+    this.facesMap = new Map();
     this.sideLen = sideLen;
     this.cPoints = this.markSurfacePoints(points);
     this.boxes = this.createLackingBoxes();
@@ -40,7 +42,8 @@ class ConcaveGeometry extends THREE.BufferGeometry {
    */
   createLackingBoxes() {
     const boxes = [];
-    const cPoints = this.surfacePoints;
+    const cPoints = this.cPoints.filter((item) => item);
+    // const cPoints = this.surfacePoints;
     for (let i = 0; i < cPoints.length; i += 1) {
       const O = cPoints[i];
       // 该点不存在(不符合要求) 或者 该点不在面上
@@ -68,7 +71,6 @@ class ConcaveGeometry extends THREE.BufferGeometry {
       const points = Object.values(oPoints).map((item) => item.vector);
       const box = new LackingBoxGeometry(O.vector, points, {
         renderer: true,
-        facesMap: this.facesMap,
       });
       //   const box = new LackingBoxGeometry(O.vector, points);
       boxes.push(box);

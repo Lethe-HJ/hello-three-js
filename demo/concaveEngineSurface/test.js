@@ -18,7 +18,7 @@ const createConcave = (points, sideLen, scene) => {
 
   const material = new THREE.MeshLambertMaterial({
     color: 0xffc0cb,
-    // side: THREE.DoubleSide, //两面可见
+    side: THREE.DoubleSide, //两面可见
     // wireframe: true,
   });
 
@@ -57,7 +57,7 @@ const createAllPoints = (geometry, scene) => {
 
 const test = (scene) => {
   const IsoSurfaceLevel = 1;
-  const precision = 1;
+  const precision = 2;
   let sideLen = 48;
   const pointsLi = generateSplitPoints(
     data,
