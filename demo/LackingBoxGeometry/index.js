@@ -10,10 +10,18 @@ const BOX_POINTS = {
 };
 
 const lackingBoxMap = new Map([
-  [0, ["ABFE", "BCGF", "CDHG", "DAEH", "ADCB", "FGHE"]],
-  [1, ["ABFE", "FBC", "FCH", "HEF", "HCD", "HDAE", "ADCB"]],
-  [20, ["ABE", "CDH", "DAEH", "ADCB", "EBCH"]],
-  [21, ["ABE", "DHG", "DAEH", "ADB", "GHE", "GBD", "EBG"]],
+  [0, ["ABFE", "BCGF", "CDHG", "DAEH", "ADCB", "FGHE"]], // ABCDEFGH
+  [1, ["ABFE", "FBC", "FCH", "HEF", "HCD", "HDAE", "ADCB"]],  // ABCDEFH
+  [21, ["ABE", "CDH", "DAEH", "ADCB", "EBCH"]],  // ABCDEH
+  [22, ["ABE", "DHG", "DAEH", "ADB", "GHE", "GBD", "EBG"]],  // ABDEGH
+  [23, ["BCG", "CHG", "AEH", "ACB", "GHE", "EBG", "HCA", "EAB"]],  // ABCEGH
+  [31, ["ABE", "DAEH", "ADB", "HBD", "EBH"]], // ABDEH
+  [32, ["CDH", "DAH", "ADC", "ACF", "FCH", "HAF"]], // ACDFH
+  [33, ["DHG", "DAH", "FGH", "FADG", "HAF"]], // ADFGH
+  [410, ["DEH", "HBD", "EBH", "EDB"]], // BDEH
+  [411, ["ABE", "AEH", "EBH", "HBA"]], // ABEH
+  [421, ["HAC", "CDH", "DAH", "ADC"]], // ACDH
+  [422, ["ACF", "FCH", "HAF", "HCA"]], // ACFH
 ]);
 
 /**
@@ -168,11 +176,20 @@ class LackingBoxGeometry extends THREE.BufferGeometry {
   }
 
   getDrawFaces(points) {
-    if ((points === "ABCDEFGH")) return lackingBoxMap.get(0);
-    if ((points === "ABCDEFH")) return lackingBoxMap.get(1);
-    if ((points === "ABCDEH")) return lackingBoxMap.get(20);
-    if ((points === "ABDEGH")) return lackingBoxMap.get(21);
-    
+    if (points === "ABCDEFGH") return lackingBoxMap.get(0);
+    if (points === "ABCDEFH") return lackingBoxMap.get(1);
+    if (points === "ABCDEH") return lackingBoxMap.get(21);
+    if (points === "ABDEGH") return lackingBoxMap.get(22);
+    if (points === "ABCEGH") return lackingBoxMap.get(23);
+    if (points === "ABDEH") return lackingBoxMap.get(31);
+    if (points === "ACDFH") return lackingBoxMap.get(32);
+    if (points === "ADFGH") return lackingBoxMap.get(33);
+    if (points === "BDEH") return lackingBoxMap.get(410);
+    if (points === "ABEH") return lackingBoxMap.get(411);
+    if (points === "CDFH") return lackingBoxMap.get(420);
+    if (points === "ACDH") return lackingBoxMap.get(421);
+    if (points === "ACFH") return lackingBoxMap.get(422);
+    if (points === "ADFH") return lackingBoxMap.get(423);
   }
 
   createAllFaces(faces) {

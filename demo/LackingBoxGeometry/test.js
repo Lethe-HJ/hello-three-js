@@ -12,7 +12,7 @@ const createPoints = (
   return new THREE.Points(geometry, material);
 };
 
-const createLackingBox = (x, y, z, pointNames, ) => {
+const createLackingBox = (x, y, z, pointNames) => {
   const O = new THREE.Vector3(x, y, z);
   const points = [];
   for (let name of pointNames) {
@@ -37,6 +37,14 @@ const test = (scene) => {
   scene.add(createPoints());
   scene.add(createLackingBox(0, 0, 0, "ABCDEFGH"));
   scene.add(createLackingBox(0, 0, 3, "ABCDEFH"));
-  scene.add(createLackingBox(0, 0, 6, "ABCDEH"));
-  scene.add(createLackingBox(0, 0, 9, "ABDEGH"));
+  scene.add(createLackingBox(3, 0, 0, "ABCDEH"));
+  scene.add(createLackingBox(3, 0, 3, "ABDEGH"));
+  scene.add(createLackingBox(3, 0, 6, "ABCEGH"));
+  scene.add(createLackingBox(6, 0, 0, "ABDEH"));
+  scene.add(createLackingBox(6, 0, 3, "ACDFH"));
+  scene.add(createLackingBox(6, 0, 6, "ADFGH"));
+  scene.add(createLackingBox(9, 0, 0, "BDEH"));
+  scene.add(createLackingBox(12, 0, 0, "ABEH"));
+  scene.add(createLackingBox(9, 0, 3, "ACDH"));
+  scene.add(createLackingBox(12, 0, 3, "ACFH"));
 };
