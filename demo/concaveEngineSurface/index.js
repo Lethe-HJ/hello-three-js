@@ -8,21 +8,17 @@ class ConcaveGeometry extends THREE.BufferGeometry {
 
     // 记录子box的面是否已经注册过
     this.facesMap = new Map();
+    this.edgesMap = new Map();
+    this.faces = [];
     this.sideLen = sideLen;
     this.cPoints = this.markSurfacePoints(points);
-    this.boxes = this.createLackingBoxes();
-    // this.boxes.push(...this.createLackingBoxes1());
-    //   this.getBoxesData();
-    //   this.renderGeometry();
+    this.boxes = this.createCustomBoxes();
+    this.smoothing();
+    this.renderGeometry();
   }
 
   get surfacePoints() {
-    return this.cPoints.filter((point) => {
-      //   return true;
-      if (point && point.isSurface) {
-        if (point.x > 36 && point.y > 36 && point.z > 36) return true;
-      }
-    });
+    return this.cPoints.filter((point) => point && point.isSurface);
   }
 
   markSurfacePoints(cPoints) {
@@ -46,91 +42,39 @@ class ConcaveGeometry extends THREE.BufferGeometry {
    *    B--------C
    *
    */
-  createLackingBoxes() {
+  createCustomBoxes() {
     const boxes = [];
-    // const cPoints = this.cPoints.filter((item) => item);
     const cPoints = this.surfacePoints;
     for (let i = 0; i < cPoints.length; i += 1) {
-      const O = cPoints[i];
-      // 该点不存在(不符合要求) 或者 该点不在面上
-      //   if (!O || !O.isSurface) continue;
+      const O = cPoints[i].vector.clone().addScalar(-0.5);
       // O点即是H点
-      const { x, y, z } = O;
-      const oPoints = {
-        A: [x - 1, y, z],
-        B: [x, y, z],
-        C: [x, y, z - 1],
-        D: [x - 1, y, z - 1],
-        E: [x - 1, y - 1, z],
-        F: [x, y - 1, z],
-        G: [x, y - 1, z - 1],
-        H: [x - 1, y - 1, z - 1],
-      };
-      for (let key in oPoints) {
-        const newPoint = this.cPoints[getIndex(...oPoints[key], this.sideLen)];
-        // newPoint&& newPoint.isSurface
-        if (newPoint) {
-          oPoints[key] = newPoint;
-        } else {
-          delete oPoints[key];
-        }
-      }
-      const points = Object.values(oPoints).map((item) => item.vector);
-      const box = new LackingBoxGeometry(O.vector, points, {
-        renderer: true,
+      new CustomBoxGeometry(O, {
+        renderer: false,
+        facesMap: this.facesMap,
+        edgesMap: this.edgesMap,
+        faces: this.faces,
       });
-      boxes.push(box);
     }
     return boxes;
   }
 
-  createLackingBoxes1() {
-    const boxes = [];
-    // const cPoints = this.cPoints.filter((item) => item);
-    const cPoints = this.surfacePoints;
-    for (let i = 0; i < cPoints.length; i += 1) {
-      const O = cPoints[i];
-      // 该点不存在(不符合要求) 或者 该点不在面上
-      //   if (!O || !O.isSurface) continue;
-      // O点即是H点
-      const { x, y, z } = O;
-      const oPoints = {
-        A: [x - 1, y, z],
-        B: [x, y, z],
-        C: [x, y, z - 1],
-        D: [x - 1, y, z - 1],
-        E: [x - 1, y - 1, z],
-        F: [x, y - 1, z],
-        G: [x, y - 1, z - 1],
-        H: [x - 1, y - 1, z - 1],
-      };
-      for (let key in oPoints) {
-        const newPoint = this.cPoints[getIndex(...oPoints[key], this.sideLen)];
-        if (newPoint) {
-          oPoints[key] = newPoint;
-        } else {
-          delete oPoints[key];
-        }
-      }
-      const points = Object.values(oPoints).map((item) => {
-        item.vector;
-      });
-      const box = new LackingBoxGeometry(O.vector, points, {
-        renderer: true,
-      });
-      boxes.push(box);
-    }
-    return boxes;
-  }
-  getBoxesData() {
-    this.boxes.forEach((box) => {
-      this.vertices = this.vertices.concat(box.vertices);
-      this.indices = this.indices.concat(box.indices);
-      this.normals = this.normals.concat(box.normals);
-    });
+  smoothing(){
+      this.edgesMap.forEach(edge => {
+          
+      })
   }
 
   renderGeometry() {
+    this.faces.forEach((face) => {
+      const [p1, p2, p3] = face.points;
+      const i1 = this.vertices.push(p1.x, p1.y, p1.z) / 3 - 1;
+      const i2 = this.vertices.push(p2.x, p2.y, p2.z) / 3 - 1;
+      const i3 = this.vertices.push(p3.x, p3.y, p3.z) / 3 - 1;
+      this.indices.push(i1, i2, i3);
+      const { x, y, z } = face.normal;
+      1;
+      this.normals.push(x, y, z, x, y, z, x, y, z);
+    });
     this.setIndex(this.indices);
     this.setAttribute(
       "position",

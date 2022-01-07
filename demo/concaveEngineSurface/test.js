@@ -1,5 +1,3 @@
-const boxPoints = LackingBoxGeometry.getPoints();
-
 const createPoints = (
   option = {
     color: 0xff0000,
@@ -14,7 +12,7 @@ const createPoints = (
 
 const createConcave = (points, sideLen, scene) => {
   const geometry = new ConcaveGeometry(points, sideLen);
-  createLackBox(geometry, scene);
+  createCustomBox(geometry, scene);
 
   const material = new THREE.MeshLambertMaterial({
     color: 0xffc0cb,
@@ -24,16 +22,15 @@ const createConcave = (points, sideLen, scene) => {
 
   mesh = new THREE.Mesh(geometry, material);
   window.mesh = mesh;
-  // scene.add(mesh);
-  return geometry
+  scene.add(mesh);
+  return geometry;
 };
 
-const createLackBox = (concave, scene) => {
+const createCustomBox = (concave, scene) => {
   return concave.boxes.map((box) => {
-    const material = new THREE.MeshLambertMaterial({
+    const material = new THREE.MeshPhongMaterial({
       color: 0xffc0cb,
       side: THREE.DoubleSide, //两面可见
-      // wireframe: true,
     });
 
     mesh = new THREE.Mesh(box, material);
@@ -56,8 +53,9 @@ const createAllPoints = (geometry, scene) => {
 };
 
 const test = (scene) => {
-  const IsoSurfaceLevel = 1;
-  const precision = 2;
+  const start = new Date().getTime();
+  const IsoSurfaceLevel = 2;
+  const precision = 0.5;
   let sideLen = 48;
   const pointsLi = generateSplitPoints(
     data,
@@ -67,6 +65,8 @@ const test = (scene) => {
 
   pointsLi.forEach((points) => {
     geometry = createConcave(points, sideLen, scene);
-    createAllPoints(geometry, scene)
+    createAllPoints(geometry, scene);
   });
+  const end = new Date().getTime();
+  console.log("共花费", end - start);
 };
