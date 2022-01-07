@@ -49,7 +49,7 @@ const createAllPoints = (geometry, scene) => {
   var material2 = new THREE.PointsMaterial({
     // color: 0xffffff * Math.random() * 255,
     color: 0xff0000,
-    size: 1.0,
+    size: 5.0,
   });
   var pointsObj = new THREE.Points(geometry2, material2);
   scene.add(pointsObj);

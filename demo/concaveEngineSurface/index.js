@@ -11,12 +11,18 @@ class ConcaveGeometry extends THREE.BufferGeometry {
     this.sideLen = sideLen;
     this.cPoints = this.markSurfacePoints(points);
     this.boxes = this.createLackingBoxes();
+    // this.boxes.push(...this.createLackingBoxes1());
     //   this.getBoxesData();
     //   this.renderGeometry();
   }
 
   get surfacePoints() {
-    return this.cPoints.filter((point) => point && point.isSurface);
+    return this.cPoints.filter((point) => {
+      //   return true;
+      if (point && point.isSurface) {
+        if (point.x > 36 && point.y > 36 && point.z > 36) return true;
+      }
+    });
   }
 
   markSurfacePoints(cPoints) {
@@ -42,8 +48,8 @@ class ConcaveGeometry extends THREE.BufferGeometry {
    */
   createLackingBoxes() {
     const boxes = [];
-    const cPoints = this.cPoints.filter((item) => item);
-    // const cPoints = this.surfacePoints;
+    // const cPoints = this.cPoints.filter((item) => item);
+    const cPoints = this.surfacePoints;
     for (let i = 0; i < cPoints.length; i += 1) {
       const O = cPoints[i];
       // 该点不存在(不符合要求) 或者 该点不在面上
@@ -62,7 +68,8 @@ class ConcaveGeometry extends THREE.BufferGeometry {
       };
       for (let key in oPoints) {
         const newPoint = this.cPoints[getIndex(...oPoints[key], this.sideLen)];
-        if (newPoint && newPoint.isSurface) {
+        // newPoint&& newPoint.isSurface
+        if (newPoint) {
           oPoints[key] = newPoint;
         } else {
           delete oPoints[key];
@@ -72,12 +79,49 @@ class ConcaveGeometry extends THREE.BufferGeometry {
       const box = new LackingBoxGeometry(O.vector, points, {
         renderer: true,
       });
-      //   const box = new LackingBoxGeometry(O.vector, points);
       boxes.push(box);
     }
     return boxes;
   }
 
+  createLackingBoxes1() {
+    const boxes = [];
+    // const cPoints = this.cPoints.filter((item) => item);
+    const cPoints = this.surfacePoints;
+    for (let i = 0; i < cPoints.length; i += 1) {
+      const O = cPoints[i];
+      // 该点不存在(不符合要求) 或者 该点不在面上
+      //   if (!O || !O.isSurface) continue;
+      // O点即是H点
+      const { x, y, z } = O;
+      const oPoints = {
+        A: [x - 1, y, z],
+        B: [x, y, z],
+        C: [x, y, z - 1],
+        D: [x - 1, y, z - 1],
+        E: [x - 1, y - 1, z],
+        F: [x, y - 1, z],
+        G: [x, y - 1, z - 1],
+        H: [x - 1, y - 1, z - 1],
+      };
+      for (let key in oPoints) {
+        const newPoint = this.cPoints[getIndex(...oPoints[key], this.sideLen)];
+        if (newPoint) {
+          oPoints[key] = newPoint;
+        } else {
+          delete oPoints[key];
+        }
+      }
+      const points = Object.values(oPoints).map((item) => {
+        item.vector;
+      });
+      const box = new LackingBoxGeometry(O.vector, points, {
+        renderer: true,
+      });
+      boxes.push(box);
+    }
+    return boxes;
+  }
   getBoxesData() {
     this.boxes.forEach((box) => {
       this.vertices = this.vertices.concat(box.vertices);

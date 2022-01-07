@@ -81,29 +81,31 @@ const test = (scene) => {
     vector(44, 3, 47),
     vector(45, 3, 46),
   ];
-  const common = [
-    // "",
-    // "A",
-    // "G",
-    // "FG",
-    // "BC"
-    "CF",
-    "CH",
-    // "DF",
-    // "CFG",
-    // "BEG",
-    // "BCE",
-    // "ACFG",
-    // "CDFG",
-    // "BEFG",
-    // "BDEG",
-  ];
+  // const common = [
+  //   // "",
+  //   // "A",
+  //   // "G",
+  //   // "FG",
+  //   // "BC"
+  //   "CF",
+  //   "CH",
+  //   // "DF",
+  //   // "CFG",
+  //   // "BEG",
+  //   // "BCE",
+  //   // "ACFG",
+  //   // "CDFG",
+  //   // "BEFG",
+  //   // "BDEG",
+  // ];
+  const common = ['BCFG', 'ADE', 'A', 'ABD', 'AD', 'AE', 'ABE', 'ABEF', 'ABCD', 'ABC', 'B', 'H', 'GH', 'G', 'BC', 'DGH', 'CDGH', 'CGH', 'D', 'ABCF', 'CG', 'CDG', 'C', '', 'BCF', 'DH', 'CD', 'CDH', 'FG', 'EGH', 'EFG', 'F', 'EH', 'EFGH', 'BF', 'DEGH', 'DEH', 'ADEH', 'AB', 'ACD', 'BFG', 'ADH', 'FGH', 'CFG', 'ABDE', 'CFGH', 'BEFG', 'ACDH', 'ABF', 'BEF', 'E', 'EF', 'BCG', 'BCD', 'BCDG', 'AEF', 'AEH', 'AEFH', 'EFH', 'DF', 'BCE', 'ABG', 'AG', 'CE', 'BDF']
+  
   common.forEach((item, index) => {
     scene.add(
       createLackingBox(
-        (index % 4) * 2,
-        (Math.floor(index / 4) % 4) * 2,
-        Math.floor(index / 16),
+        (index % 4) * 4,
+        (Math.floor(index / 4) % 4) * 4,
+        Math.floor(index / 16) * 4,
         // mapPoints(item)
         item
       )

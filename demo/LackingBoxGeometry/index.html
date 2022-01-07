@@ -14,6 +14,7 @@
     <script src="../../three.js-master/examples/js/math/ConvexHull.js"></script>
     <script src="../../three.js-master/examples/js/geometries/ConvexGeometry.js"></script>
     <script src="./index.js"></script>
+    <script src="./utils.js"></script>
     <script src="./test.js"></script>
   </head>
 
@@ -25,10 +26,14 @@
       const axisHelper = new THREE.AxesHelper(250);
       scene.add(axisHelper);
 
-      const point = new THREE.PointLight(0xffffff);
-      point.position.set(400, 200, 300); //点光源位置
+      const point1 = new THREE.PointLight(0xffffff);
+      point1.position.set(400, 200, 300); //点光源位置
       // 通过add方法插入场景中，不插入的话，渲染的时候不会获取光源的信息进行光照计算
-      scene.add(point); //点光源添加到场景中
+      scene.add(point1); //点光源添加到场景中
+      const point2 = new THREE.PointLight(0xffffff);
+      point2.position.set(-400, -200, -300); //点光源位置
+      // 通过add方法插入场景中，不插入的话，渲染的时候不会获取光源的信息进行光照计算
+      scene.add(point2); //点光源添加到场景中
       //环境光    环境光颜色与网格模型的颜色进行RGB进行乘法运算
       const ambient = new THREE.AmbientLight(0x444444);
       scene.add(ambient);

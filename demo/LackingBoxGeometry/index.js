@@ -10,15 +10,39 @@ const BOX_POINTS_MAPPING1 = {
 };
 
 const BOX_POINTS_MAPPING2 = new Map([
-  ["100", "A"],
-  ["000", "B"],
-  ["001", "C"],
-  ["101", "D"],
-  ["110", "E"],
-  ["010", "F"],
-  ["011", "G"],
-  ["111", "H"],
+  ["0-1-1", "A"],
+  ["-1-1-1", "B"],
+  ["-1-10", "C"],
+  ["0-10", "D"],
+  ["00-1", "E"],
+  ["-10-1", "F"],
+  ["-100", "G"],
+  ["000", "H"],
 ]);
+
+const BOX_POINTS_MAPPING1_B = {
+  A: new THREE.Vector3(0, 1, 1),
+  B: new THREE.Vector3(1, 1, 1),
+  C: new THREE.Vector3(1, 1, 0),
+  D: new THREE.Vector3(0, 1, 0),
+  E: new THREE.Vector3(0, 0, 1),
+  F: new THREE.Vector3(1, 0, 1),
+  G: new THREE.Vector3(1, 0, 0),
+  H: new THREE.Vector3(0, 0, 0),
+};
+
+const BOX_POINTS_MAPPING2_B = new Map([
+  ["011", "A"],
+  ["111", "B"],
+  ["110", "C"],
+  ["010", "D"],
+  ["001", "E"],
+  ["101", "F"],
+  ["100", "G"],
+  ["000", "H"],
+]);
+
+window.lacks = new Set();
 
 const ALL_POINTS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 const lackingBoxMap = new Map([
@@ -35,28 +59,7 @@ const lackingBoxMap = new Map([
   ["BEFG", ["HAC", "CDH", "DAH", "ADC"]], // BEFG
   ["BDEG", ["ACF", "FCH", "HAF", "HCA"]], // BDEG
 ]);
-// const coordMapping = new Map([
-//   // 绕x,y,z分别旋转90 180 270 最后一个是对顶点
-//   ["A", ["D", "H", "E", "B", "C", "D", "B", "F", "E", "G"]],
-//   ["B", ["C", "G", "F", "C", "D", "A", "F", "E", "A", "H"]],
-//   ["C", ["G", "F", "B", "D", "A", "B", "G", "H", "D", "E"]],
-//   ["D", ["H", "E", "A", "A", "B", "C", "C", "G", "H", "F"]],
-//   ["E", ["A", "D", "H", "F", "G", "H", "A", "B", "F", "C"]],
-//   ["F", ["B", "C", "G", "G", "H", "E", "E", "A", "B", "D"]],
-//   ["G", ["F", "B", "C", "H", "E", "F", "H", "D", "C", "A"]],
-//   ["H", ["E", "A", "D", "E", "F", "G", "D", "C", "G", "B"]],
-// ]);
-const coordMapping = new Map([
-  // 绕x,y,z分别旋转90 180 270 最后一个是对顶点
-  ["A", ["D", "H", "E", "B", "C", "D", "B", "F", "E"]],
-  ["B", ["C", "G", "F", "C", "D", "A", "F", "E", "A"]],
-  ["C", ["G", "F", "B", "D", "A", "B", "G", "H", "D"]],
-  ["D", ["H", "E", "A", "A", "B", "C", "C", "G", "H"]],
-  ["E", ["A", "D", "H", "F", "G", "H", "A", "B", "F"]],
-  ["F", ["B", "C", "G", "G", "H", "E", "E", "A", "B"]],
-  ["G", ["F", "B", "C", "H", "E", "F", "H", "D", "C"]],
-  ["H", ["E", "A", "D", "E", "F", "G", "D", "C", "G"]],
-]);
+
 /**
  * compare two float with operator ">, <, =, >=, <= ,!="
  * @param {*} operandA
@@ -252,6 +255,19 @@ class LackingBoxGeometry extends THREE.BufferGeometry {
     this.normals = [];
 
     this.O = O;
+    points = points.filter((item) => item);
+    this.center = this.computeCenter(points); // 几何重心
+    if (
+      this.O.x > this.center.x &&
+      this.O.y > this.center.y &&
+      this.O.z > this.center.z
+    ) {
+      this.BOX_POINTS_MAPPING1 = BOX_POINTS_MAPPING1;
+      this.BOX_POINTS_MAPPING2 = BOX_POINTS_MAPPING2;
+    } else {
+      this.BOX_POINTS_MAPPING1 = BOX_POINTS_MAPPING1_B;
+      this.BOX_POINTS_MAPPING2 = BOX_POINTS_MAPPING2_B;
+    }
     this.faces = [];
     this.facesMap = new Map();
     // 部分面需要双面渲染
@@ -263,7 +279,6 @@ class LackingBoxGeometry extends THREE.BufferGeometry {
     }
     const data = this.getDrawFaces(points);
     if (data.faces.length) {
-      this.center = this.computeCenter(data.points); // 几何重心
       this.createAllFaces(data.faces);
       this.addFaces(O);
       option.renderer && this.renderGeometry();
@@ -283,7 +298,7 @@ class LackingBoxGeometry extends THREE.BufferGeometry {
   }
 
   static getPoints() {
-    return BOX_POINTS_MAPPING1;
+    return this.BOX_POINTS_MAPPING1;
   }
 
   computeLackPoints(points) {
@@ -291,24 +306,37 @@ class LackingBoxGeometry extends THREE.BufferGeometry {
     points.forEach((point) => {
       const { x, y, z } = point;
       const { x: x0, y: y0, z: z0 } = this.O;
-      const id = `${x0 - x}${y0 - y}${z0 - z}`;
-      const ch = BOX_POINTS_MAPPING2.get(id);
+      const id = `${x - x0}${y - y0}${z - z0}`;
+      const ch = this.BOX_POINTS_MAPPING2.get(id);
       if (ch) exist.set(ch, true);
     });
     const lack = ALL_POINTS.filter((item) => !exist.has(item)); // 求差集
     return lack.join("");
   }
 
+  // computeCenter(points) {
+  //   let x = 0,
+  //     y = 0,
+  //     z = 0;
+  //   const len = points.length;
+  //   points.split("").forEach((item) => {
+  //     const point = BOX_POINTS_MAPPING1[item];
+  //     x += point.x;
+  //     y += point.y;
+  //     z += point.z;
+  //   });
+  //   return new THREE.Vector3(x / len, y / len, z / len);
+  // }
   computeCenter(points) {
     let x = 0,
       y = 0,
       z = 0;
+    points = points.filter((item) => item);
     const len = points.length;
-    points.split("").forEach((item) => {
-      const point = BOX_POINTS_MAPPING1[item];
-      x += point.x;
-      y += point.y;
-      z += point.z;
+    points.forEach((item) => {
+      x += item.x;
+      y += item.y;
+      z += item.z;
     });
     return new THREE.Vector3(x / len, y / len, z / len);
   }
@@ -322,36 +350,51 @@ class LackingBoxGeometry extends THREE.BufferGeometry {
   }
 
   mappingPoints(points) {
-    // 最多只能缺4个点
-    if (points.length > 4) return { faces: [], points };
-    if (points.length === 4) {
+    // 最多只能缺5个点
+    if (points.length > 5) return { faces: [], points };
+    if (points.length >= 4) {
       const newPoints = points.split("").map((item) => {
-        const point = BOX_POINTS_MAPPING1[item];
+        const point = this.BOX_POINTS_MAPPING1[item];
         point.key = item;
         return point;
       });
-      if (is4PointsCoplanar(...newPoints)) {
-        const [{ key: i1 }, { key: i2 }, { key: i3 }, { key: i4 }] =
-          getDiagonal(...newPoints);
-        // p1 p2 是对角 p3 p4也是对角度
-        const i132 = `${i1}${i3}${i2}`;
-        const i123 = `${i1}${i2}${i3}`;
-        const i124 = `${i1}${i2}${i4}`;
-        const i142 = `${i1}${i4}${i2}`;
-        if (this.doubleFacesMap.has(i132)) return { faces: [], points };
-        // "+i132"值用于避免i132对应的三角面在facesMap中被i123覆盖的情形
-        this.doubleFacesMap.set(i132, "+i132");
-        this.doubleFacesMap.set(i123, "+i123");
-        this.doubleFacesMap.set(i124, "+i124");
-        this.doubleFacesMap.set(i142, "+i142");
-        return { faces: [i132, i123, i124, i142], points };
-      }
+      // if (points.length === 4) {
+      //   if (is4PointsCoplanar(...newPoints)) {
+      //     const [{ key: i1 }, { key: i2 }, { key: i3 }, { key: i4 }] =
+      //       getDiagonal(...newPoints);
+      //     // p1 p2 是对角 p3 p4也是对角度
+      //     const i132 = `${i1}${i3}${i2}`;
+      //     const i123 = `${i1}${i2}${i3}`;
+      //     const i124 = `${i1}${i2}${i4}`;
+      //     const i142 = `${i1}${i4}${i2}`;
+      //     if (this.doubleFacesMap.has(i132)) return { faces: [], points };
+      //     // "+i132"值用于避免i132对应的三角面在facesMap中被i123覆盖的情形
+      //     this.doubleFacesMap.set(i132, "+i132");
+      //     this.doubleFacesMap.set(i123, "+i123");
+      //     this.doubleFacesMap.set(i124, "+i124");
+      //     this.doubleFacesMap.set(i142, "+i142");
+      //     return { faces: [i132, i123, i124, i142], points };
+      //   }
+      // }
+      // if (points.length === 5) {
+      //   const newPoints = ALL_POINTS.filter(
+      //     (item) => points.indexOf(item) !== -1
+      //   );
+      //   const [p1, p2, p3] = newPoints;
+      //   const p132 = `${p1}${p3}${p2}`;
+      //   const p123 = `${p1}${p2}${p3}`;
+      //   if (this.doubleFacesMap.has(p132)) return { faces: [], points };
+      //   // "+i132"值用于避免i132对应的三角面在facesMap中被i123覆盖的情形
+      //   this.doubleFacesMap.set(p132, "+p132");
+      //   this.doubleFacesMap.set(p123, "+p123");
+      //   return { faces: [p132, p123], points };
+      // }
     }
     let i = 0;
     let faces = null;
     let mapping = null;
     let newPoints = null;
-    while (i < 10) {
+    while (i < 24) {
       newPoints = "";
       for (let point of points) {
         mapping = coordMapping.get(point);
@@ -378,7 +421,7 @@ class LackingBoxGeometry extends THREE.BufferGeometry {
   createAllFaces(faces) {
     faces.forEach((face) => {
       const points = Array.from(face).map(
-        (name) => LackingBoxGeometry.getPoints()[name]
+        (name) => this.BOX_POINTS_MAPPING1[name]
       );
       if (face.length === 4) {
         this.addQuadrangle(points);
@@ -497,7 +540,6 @@ class LackingBoxGeometry extends THREE.BufferGeometry {
         this.fatherFacesMap.set(index, null);
       }
     }
-    // this.facesMap.set(index, smallTriangle);
     return;
   }
 
