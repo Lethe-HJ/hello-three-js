@@ -76,6 +76,7 @@ const sortString = (str) => {
  * @return {*}
  */
 const sortPoints = (points) => {
+  if (points.length === 1) return points;
   const sortedPoints = [...points].sort((a, b) => {
     const xab = a.x - b.x;
     if (xab === 0) {
@@ -91,18 +92,23 @@ const sortPoints = (points) => {
 };
 
 /**
- * E---------H
- * |\      |  \
- * |  F--------G
- * |  |     |  |
- * A--|-----D  |
- *  \ |      \ |
- *    B--------C
- *   (O)
+ * Generates a sequence-independent unique identifier string for an array of points
+ * @param {Array<THREE.Vector3>} points
+ * @return { String }
+ * @memberof lackingBoxGeometry
  */
+const computeKey = (points) => {
+  const sortedPoints = sortPoints(points);
+  const keyLi = sortedPoints.map((point) => {
+    const { x, y, z } = point;
+    return `${x},${y},${z}`;
+  });
+  return keyLi.join(";");
+};
+
 class CustomBoxGeometry extends THREE.BufferGeometry {
   constructor(
-    O,
+    oPoint,
     option = {
       renderer: true,
     }
@@ -113,9 +119,10 @@ class CustomBoxGeometry extends THREE.BufferGeometry {
     this.vertices = [];
     this.normals = [];
     this.faces = option.faces || new Map();
+    this.pointsMap = option.pointsMap || new Map();
     this.edgesMap = option.edgesMap || new Map();
     this.facesMap = option.facesMap || new Map();
-    this.O = O;
+    this.oPoint = oPoint;
     // this.center = O.clone().addScalar(0.5);
     this.createAllFaces();
     option.renderer && this.renderGeometry();
@@ -142,15 +149,26 @@ class CustomBoxGeometry extends THREE.BufferGeometry {
     );
   }
 
+  /**
+   * E---------H
+   * |\      |  \
+   * |  F--------G
+   * |  |     |  |
+   * A--|-----D  |
+   *  \ |      \ |
+   *    B--------C
+   *   (O)
+   */
   createAllFaces() {
-    const { x: x0, y: y0, z: z0 } = this.O;
+    const { x: x0, y: y0, z: z0 } = this.oPoint.vector;
     const mapping = new Map();
 
     BOX_POINTS_MAPPING.forEach((item, index) => {
       const { x, y, z } = item;
       mapping.set(index, new THREE.Vector3(x + x0, y + y0, z + z0));
     });
-    ["ABFE", "BCGF", "CDHG", "DAEH", "ADCB", "FGHE"].forEach((face) => {
+    ["ABFE", "BCGF", "CDHG", "DAEH", "ADCB", "FGHE"].forEach((face, index) => {
+      
       const points = Array.from(face).map((name) => mapping.get(name));
       this.addQuadrangle(...points);
     });
@@ -185,7 +203,7 @@ class CustomBoxGeometry extends THREE.BufferGeometry {
    * @memberof lackingBoxGeometry
    */
   addBigTriangle(p1, p2, p3) {
-    const index = this.computeKey([p1, p2, p3]);
+    const index = computeKey([p1, p2, p3]);
     const smallTriangle = new SmallTriangle(p1, p2, p3, this.center);
     // 已经存在的面再次添加会将其值设置为null 换句话说 两次及两次以上添加的面即为重复面,不应该被渲染
     let theFace = this.facesMap.get(index);
@@ -197,9 +215,22 @@ class CustomBoxGeometry extends THREE.BufferGeometry {
         this.facesMap.set(index, true);
       } else {
         this.facesMap.set(index, null);
+        this.deleteEdge(p2, p3);
       }
     }
     return;
+  }
+
+  addPoint(p) {
+    const key = computeKey([p]);
+    let thePoint = this.pointsMap.get(key);
+    if (thePoint) {
+      thePoint.count += 1;
+    } else {
+      thePoint = new VirtualPoint(p, key);
+      this.pointsMap.set(key, thePoint);
+    }
+    return thePoint;
   }
 
   /**
@@ -210,26 +241,18 @@ class CustomBoxGeometry extends THREE.BufferGeometry {
    * @memberof CustomBoxGeometry
    */
   addEdge(p1, p2) {
-    const index = this.computeKey([p1, p2]);
+    const index = computeKey([p1, p2]);
     const theEdge = this.edgesMap.get(index);
-    let count = theEdge ? theEdge + 1 : 1;
-    this.edgesMap.set(index, count);
-  }
-
-  /**
-   * Generates a sequence-independent unique identifier string for an array of points
-   * @param {Array<THREE.Vector3>} points
-   * @return { String }
-   * @memberof lackingBoxGeometry
-   */
-  computeKey(points) {
-    const sortedPoints = sortPoints(points);
-    let key = "";
-    sortedPoints.forEach((point) => {
-      const { x, y, z } = point;
-      key += `-${x}_${y}_${z}`;
-    });
-    return key;
+    if (theEdge === null) return;
+    const points = [this.addPoint(p1), this.addPoint(p2)];
+    if (theEdge) {
+      theEdge.count += 1;
+      if (theEdge.count >= 4) {
+        this.edgesMap.delete(index);
+      }
+    } else {
+      this.edgesMap.set(index, { points, count: 1 });
+    }
   }
 }
 
@@ -275,5 +298,45 @@ class SmallTriangle {
     this.triangle.set(p1, p2, p3);
     this.triangle.getNormal(this.normal);
     this.triangle.getMidpoint(this.midpoint);
+  }
+}
+
+const notEqual = (a, b) => {
+  return floatCompare(a, "!=", b, 0.0001);
+};
+
+class VirtualPoint {
+  constructor(vector, key) {
+    this.key = key;
+    this.vector = vector;
+    this.count = 0;
+    this.neighbour = this.getNeighbour();
+  }
+
+  countNotEqual(point) {
+    let { x: x0, y: y0, z: z0 } = this.vector;
+    const { x, y, z } = point;
+    let count = 0;
+    if (notEqual(x0, x)) count += 1;
+    if (notEqual(y0, y)) count += 1;
+    if (notEqual(z0, z)) count += 1;
+    return count;
+  }
+
+  getNeighbour() {
+    let { x: x0, y: y0, z: z0 } = this.vector;
+    const neighbour = { 0: [], 1: [], 2: [], 3: [], all: [] };
+    for (let x = x0 - 1; x <= x0 + 1; x += 1) {
+      for (let y = y0 - 1; y <= y0 + 1; y += 1) {
+        for (let z = z0 - 1; z <= z0 + 1; z += 1) {
+          const point = { x, y, z };
+          const key = computeKey([point]);
+          const notEqual = this.countNotEqual(point);
+          neighbour[notEqual].push(key);
+          neighbour.all.push(key);
+        }
+      }
+    }
+    return neighbour;
   }
 }

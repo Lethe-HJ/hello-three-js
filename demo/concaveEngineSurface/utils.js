@@ -26,7 +26,7 @@ const generateSplitPoints = (data, sideLen, checkSuitable) => {
         const { x, y, z } = node;
         node.vector = new THREE.Vector3(x * gap, y * gap, z * gap);
         points[j] = node;
-        stack.push(...node.neighbour);
+        stack.push(...node.neighbour.all);
       }
       pointsMap.delete(j);
     }
@@ -71,32 +71,38 @@ const createNode = (index, sideLen, offset = 1) => {
   const x0 = Math.floor(index % sideLen);
   const y0 = Math.floor((index % (sideLen * sideLen)) / sideLen);
   const z0 = Math.floor(index / (sideLen * sideLen));
-  const neighbour = [];
-  const xMin = Math.max(0, x0 - offset),
-    max = Math.min(x0 + offset, sideLen - 1);
-  for (let x = xMin; x <= max; x += offset) {
+  const neighbour = { 0: [], 1: [], 2: [], 3: [], all: [] };
+  const zMin = Math.max(0, z0 - offset),
+    max = Math.min(z0 + offset, sideLen - 1);
+  for (let z = zMin; z <= max; z += offset) {
     const yMin = Math.max(0, y0 - offset),
       max = Math.min(y0 + offset, sideLen - 1);
     for (let y = yMin; y <= max; y += offset) {
-      const zMin = Math.max(0, z0 - offset),
-        max = Math.min(z0 + offset, sideLen - 1);
-      for (let z = zMin; z <= max; z += offset) {
-        const index = getIndex(x, y, z, sideLen);
-        neighbour.push(index);
+      const xMin = Math.max(0, x0 - offset),
+        max = Math.min(x0 + offset, sideLen - 1);
+      for (let x = xMin; x <= max; x += offset) {
+        const indexObj = {
+          key: [x,y,z],
+          index: getIndex(x, y, z, sideLen),
+        };
+        const notEqual = countNotEqual({ x0, y0, z0 }, { x, y, z });
+        neighbour[notEqual].push(indexObj.key);
+        neighbour.all.push(indexObj.index);
       }
     }
   }
   return new Point(index, x0, y0, z0, neighbour);
 };
 
-const countNum = (a, b, c) => {
+const countNotEqual = (p0, p1) => {
+  const { x0, y0, z0 } = p0;
+  const { x, y, z } = p1;
   let count = 0;
-  [a, b, c].forEach((item) => {
-    if (item === 0) count += 1;
-  });
+  if (x0 !== x) count += 1;
+  if (y0 !== y) count += 1;
+  if (z0 !== z) count += 1;
   return count;
 };
-
 /**
  * a set of points to describe a geometry
  * @typedef { Array<THREE.Vector3> } Points

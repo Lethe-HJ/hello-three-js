@@ -34,7 +34,7 @@ const createCustomBox = (concave, scene) => {
     });
 
     mesh = new THREE.Mesh(box, material);
-    scene.add(mesh);
+    // scene.add(mesh);
   });
 };
 
@@ -62,11 +62,23 @@ const test = (scene) => {
     sideLen,
     (value) => Math.abs(value - IsoSurfaceLevel) < precision
   );
-
+  console.log("generateSplitPoints函数花费", new Date().getTime() - start);
   pointsLi.forEach((points) => {
     geometry = createConcave(points, sideLen, scene);
     createAllPoints(geometry, scene);
+    // createParametric(scene)
   });
   const end = new Date().getTime();
   console.log("共花费", end - start);
 };
+
+// const createParametric = (scene) => {
+//   var geometry = new THREE.ParametricGeometry(
+//     THREE.ParametricGeometries.klein,
+//     25,
+//     25
+//   );
+//   var material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+//   var klein = new THREE.Mesh(geometry, material);
+//   scene.add(klein);
+// };
