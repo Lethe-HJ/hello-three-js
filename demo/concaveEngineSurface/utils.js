@@ -71,7 +71,13 @@ const createNode = (index, sideLen, offset = 1) => {
   const x0 = Math.floor(index % sideLen);
   const y0 = Math.floor((index % (sideLen * sideLen)) / sideLen);
   const z0 = Math.floor(index / (sideLen * sideLen));
-  const neighbour = { 0: [], 1: [], 2: [], 3: [], all: [] };
+  const neighbour = {
+    0: [],
+    1: new Array(6).fill(null),
+    2: [],
+    3: [],
+    all: [],
+  };
   const zMin = Math.max(0, z0 - offset),
     max = Math.min(z0 + offset, sideLen - 1);
   for (let z = zMin; z <= max; z += offset) {
@@ -82,11 +88,19 @@ const createNode = (index, sideLen, offset = 1) => {
         max = Math.min(x0 + offset, sideLen - 1);
       for (let x = xMin; x <= max; x += offset) {
         const indexObj = {
-          key: [x,y,z],
+          key: [x, y, z],
           index: getIndex(x, y, z, sideLen),
         };
         const notEqual = countNotEqual({ x0, y0, z0 }, { x, y, z });
-        neighbour[notEqual].push(indexObj.key);
+        // 按-x +x -y +y -z +z顺序排列
+        if (notEqual === 1) {
+          if (x < x0) neighbour[1][0] = indexObj.key;
+          if (x > x0) neighbour[1][1] = indexObj.key;
+          if (y < y0) neighbour[1][2] = indexObj.key;
+          if (y > y0) neighbour[1][3] = indexObj.key;
+          if (z < z0) neighbour[1][4] = indexObj.key;
+          if (z > z0) neighbour[1][5] = indexObj.key;
+        } else neighbour[notEqual].push(indexObj.key);
         neighbour.all.push(indexObj.index);
       }
     }

@@ -120,10 +120,11 @@ class CustomBoxGeometry extends THREE.BufferGeometry {
     this.normals = [];
     this.faces = option.faces || new Map();
     this.pointsMap = option.pointsMap || new Map();
-    this.edgesMap = option.edgesMap || new Map();
+    this.fatherEdgesMap = option.edgesMap || new Map();
+    this.edgesMap = new Map();
     this.facesMap = option.facesMap || new Map();
     this.oPoint = oPoint;
-    // this.center = O.clone().addScalar(0.5);
+    this.center = oPoint.vector.clone().addScalar(0.5);
     this.createAllFaces();
     option.renderer && this.renderGeometry();
   }
@@ -151,13 +152,15 @@ class CustomBoxGeometry extends THREE.BufferGeometry {
 
   /**
    * E---------H
-   * |\      |  \
+   * |\       | \
    * |  F--------G
    * |  |     |  |
    * A--|-----D  |
    *  \ |      \ |
    *    B--------C
    *   (O)
+   * FBCG HDAE DCBA HGFE EABF GCDH
+   *  -x   +x   -y   +y   -z   +z
    */
   createAllFaces() {
     const { x: x0, y: y0, z: z0 } = this.oPoint.vector;
@@ -167,8 +170,9 @@ class CustomBoxGeometry extends THREE.BufferGeometry {
       const { x, y, z } = item;
       mapping.set(index, new THREE.Vector3(x + x0, y + y0, z + z0));
     });
-    ["ABFE", "BCGF", "CDHG", "DAEH", "ADCB", "FGHE"].forEach((face, index) => {
-      
+    ["FBCG", "HDAE", "DCBA", "HGFE", "EABF", "GCDH"].forEach((face, index) => {
+      // 这个方向上有距离为1的邻点则无需渲染该面
+      if (this.oPoint.neighbour[1][index]) return;
       const points = Array.from(face).map((name) => mapping.get(name));
       this.addQuadrangle(...points);
     });
@@ -207,17 +211,12 @@ class CustomBoxGeometry extends THREE.BufferGeometry {
     const smallTriangle = new SmallTriangle(p1, p2, p3, this.center);
     // 已经存在的面再次添加会将其值设置为null 换句话说 两次及两次以上添加的面即为重复面,不应该被渲染
     let theFace = this.facesMap.get(index);
-    if (theFace !== null) {
-      if (theFace === undefined) {
-        this.faces.push(smallTriangle);
-        this.addEdge(p1, p2);
-        this.addEdge(p2, p3);
-        this.facesMap.set(index, true);
-      } else {
-        this.facesMap.set(index, null);
-        this.deleteEdge(p2, p3);
-      }
+    if (theFace === undefined) {
+      this.faces.push(smallTriangle);
+      this.facesMap.set(index, smallTriangle);
     }
+    this.addEdge(p1, p2);
+    this.addEdge(p2, p3);
     return;
   }
 
@@ -234,8 +233,6 @@ class CustomBoxGeometry extends THREE.BufferGeometry {
   }
 
   /**
-   * 记录正方体的棱 用于作整体的concave的smoothing
-   * 在当前正方体中该棱只会被记录一次
    * @param {*} p1
    * @param {*} p2
    * @memberof CustomBoxGeometry
@@ -243,15 +240,16 @@ class CustomBoxGeometry extends THREE.BufferGeometry {
   addEdge(p1, p2) {
     const index = computeKey([p1, p2]);
     const theEdge = this.edgesMap.get(index);
-    if (theEdge === null) return;
+    // if (theEdge === null) return;
     const points = [this.addPoint(p1), this.addPoint(p2)];
-    if (theEdge) {
-      theEdge.count += 1;
-      if (theEdge.count >= 4) {
-        this.edgesMap.delete(index);
+    if (!theEdge) {
+      const theFatherEdge = this.fatherEdgesMap.get(index);
+      if(theFatherEdge) {
+        theFatherEdge.count += 1;
+      } else {
+        this.fatherEdgesMap.set(index, { points, count: 1 });
       }
-    } else {
-      this.edgesMap.set(index, { points, count: 1 });
+      this.edgesMap.set(index, points);
     }
   }
 }
@@ -276,12 +274,13 @@ class SmallTriangle {
     this.normal = new THREE.Vector3();
     this.midpoint = new THREE.Vector3();
     this.createTriangle(p1, p2, p3);
-    // if (this.isWrongClockwise(center)) {
-    //   this.createTriangle(p3, p2, p1);
-    // }
+    if (!this.isWrongClockwise(center)) {
+      this.createTriangle(p3, p2, p1);
+    }
   }
 
   isWrongClockwise(center) {
+    if (center === undefined) debugger;
     const centerToMid = new THREE.Vector3(
       this.midpoint.x - center.x,
       this.midpoint.y - center.y,

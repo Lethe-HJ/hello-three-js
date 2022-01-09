@@ -38,6 +38,29 @@ const createCustomBox = (concave, scene) => {
   });
 };
 
+const createDebugger = (geometry, scene) => {
+  const data = geometry.debuggerData;
+  var geometry1 = new THREE.BufferGeometry();
+  geometry1.setFromPoints(data.point);
+  var material1 = new THREE.PointsMaterial({
+    color: 0x90f000,
+    size: 5.0,
+  });
+  var pointsObj = new THREE.Points(geometry1, material1);
+  scene.add(pointsObj);
+
+  data.edge.forEach((edge) => {
+    var material = new THREE.LineBasicMaterial({
+      color: 0x0000ff,
+      size: 5.0,
+    });
+    const points = edge;
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    var line = new THREE.Line(geometry, material);
+    scene.add(line);
+  });
+};
+
 const createAllPoints = (geometry, scene) => {
   const redPoints = geometry.surfacePoints;
   if (redPoints.length < 4) return;
@@ -67,6 +90,7 @@ const test = (scene) => {
     geometry = createConcave(points, sideLen, scene);
     createAllPoints(geometry, scene);
     // createParametric(scene)
+    createDebugger(geometry, scene);
   });
   const end = new Date().getTime();
   console.log("共花费", end - start);
