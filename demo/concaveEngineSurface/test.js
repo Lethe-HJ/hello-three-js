@@ -52,7 +52,6 @@ const createDebugger = (geometry, scene) => {
   data.edge.forEach((edge) => {
     var material = new THREE.LineBasicMaterial({
       color: 0x0000ff,
-      size: 10.0,
     });
     const points = edge;
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
