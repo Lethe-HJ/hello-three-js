@@ -171,9 +171,16 @@ class CustomBoxGeometry extends THREE.BufferGeometry {
       mapping.set(index, new THREE.Vector3(x + x0, y + y0, z + z0));
     });
     ["FBCG", "HDAE", "DCBA", "HGFE", "EABF", "GCDH"].forEach((face, index) => {
-      // 这个方向上有距离为1的邻点则无需渲染该面
-      if (this.oPoint.neighbour[1][index]) return;
       const points = Array.from(face).map((name) => mapping.get(name));
+      // 这个方向上有距离为1的邻点则无需渲染该面 但是edge还是需要加上
+      if (this.oPoint.neighbour[1][index]) {
+        const [p1, p2, p3, p4] = points;
+        this.addEdge(p1, p2);
+        this.addEdge(p2, p3);
+        this.addEdge(p3, p4);
+        this.addEdge(p4, p1);
+        return;
+      }
       this.addQuadrangle(...points);
     });
   }
@@ -244,7 +251,7 @@ class CustomBoxGeometry extends THREE.BufferGeometry {
     const points = [this.addPoint(p1), this.addPoint(p2)];
     if (!theEdge) {
       const theFatherEdge = this.fatherEdgesMap.get(index);
-      if(theFatherEdge) {
+      if (theFatherEdge) {
         theFatherEdge.count += 1;
       } else {
         this.fatherEdgesMap.set(index, { points, count: 1 });

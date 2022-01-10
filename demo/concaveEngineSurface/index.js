@@ -22,6 +22,8 @@ const countDisplayTimes = (arr, times) => {
  * 计算两点的中点
  */
 const computerMidpoint = (a, b) => {
+  a = a.clone();
+  b = b.clone();
   return new THREE.Vector3((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
 };
 
@@ -30,9 +32,21 @@ const computerMidpoint = (a, b) => {
  * p1-----p-----p2
  */
 const computerSymmetryPoint = (p1, p) => {
-  const { x: x1, y: y1, z: z1 } = p1;
-  const { x, y, z } = p;
+  const { x: x1, y: y1, z: z1 } = p1.clone();
+  const { x, y, z } = p.clone();
   return new THREE.Vector3(2 * x - x1, 2 * y - y1, 2 * z - z1);
+};
+
+/**
+ * 判断两个向量是否垂直
+ * @param {*} v1
+ * @param {*} v2
+ * @return {*} 
+ */
+const isVertical = (v1, v2) => {
+  const radian = v1.angleTo(v2);
+  const angle = THREE.Math.radToDeg(radian);
+  return floatCompare(angle, "=", 90, 0.001);
 };
 
 class ConcaveGeometry extends THREE.BufferGeometry {
@@ -121,20 +135,122 @@ class ConcaveGeometry extends THREE.BufferGeometry {
     return this.pointsMap.get(`${x},${y},${z}`);
   }
 
+  addDebuggerPoint(p1) {
+    p1 = p1.vector || p1;
+    const p11 = p1.clone().addScalar(0.01);
+    this.debuggerData.point.push(p11);
+  }
+
+  addDebuggerEdge(p1, p2) {
+    p1 = p1.vector || p1;
+    p2 = p2.vector || p2;
+    const p11 = p1.clone().addScalar(0.01);
+    const p21 = p2.clone().addScalar(0.01);
+    this.debuggerData.edge.push([p11, p21]);
+  }
+
+  /**
+   * 分类point关联的edge 依据count分为1=>convex, 2=>flat, 3=>concave
+   *
+   * @param {*} index
+   * @param {*} edge
+   * @memberof ConcaveGeometry
+   */
+  classifyEdgesOfPoint(index, edge) {
+    let edgePoint = this.edgePointsMap.get(index);
+    if (!edgePoint) {
+      edgePoint = { convex: [], flat: [], concave: [], others: [] };
+      this.edgePointsMap.set(index, edgePoint);
+    }
+    if (edge.count === 1) {
+      // convex edge
+      edgePoint.convex.push(edge);
+    } else if (edge.count === 2) {
+      // concave edge or flat edge
+      /**
+       * edge.count === 2 可能是下列两种情况
+       * 情况1
+       *      1----c
+       *      |\    \
+       *      | \    \
+       * 3----4  2----a
+       * |\    \ |    |
+       * | \    \|    |
+       * b  5----6----9
+       *  \ |    |
+       *   \|    |
+       *    -----7
+       *
+       * 情况2
+       * 3----4----a
+       * |\    \    \
+       * | \    \    \
+       * b  5----6----9
+       *  \ |    |    |
+       *   \|    |    |
+       *    -----7-----
+       * 情况1应该归类于concave 情况2应该归类于flat
+       * 区分方法: 情况2的46 不存在edge12 向量14,26相等,长度为1,且14,26与46垂直
+       */
+      const [p4, p6] = edge.points;
+      const v46 = p6.vector.clone().sub(p4.vector);
+      // 遍历距离为1的邻居
+      for (let i = 0; i < p6.neighbour[1].length; i += 1) {
+        const i2 = p6.neighbour[1][i];
+        const p2 = this.pointsMap.get(i2);
+        if (!p2) continue;
+        const v26 = p6.vector.clone().sub(p2.vector);
+        if (isVertical(v26, v46)) {
+          const i1 = p4.neighbour[1][i];
+          const p1 = this.pointsMap.get(i1);
+          if (!p1) continue;
+          const v14 = p4.vector.clone().sub(p1.vector);
+          if (v14.equals(v26)) {
+            const i12 = computeKey([p1, p2]);
+            if (this.edgesMap.get(i12)) {
+              debugger;
+              edgePoint.concave.push(edge);
+              return;
+            }
+          }
+        }
+      }
+      edgePoint.flat.push(edge);
+    } else if (edge.count === 3) {
+      // concave edge
+      edgePoint.concave.push(edge);
+    } else {
+      edgePoint.others.push(edge);
+    }
+  }
+
   smoothing() {
     const start = new Date().getTime();
-    this.concaveEdgePoints = new Map();
+    this.edgePointsMap = new Map();
     this.edgesMap.forEach((edge, index) => {
-      if (edge.count < 2) return;
-      // if (edge.count === 2) {
-      //   const [p1, p2] = edge.points;
-      //   this.debuggerData.edge.push([p1.vector, p2.vector]);
-      //   return;
-      // }
-      // edge.count = 2 称为concaveEdge
       const [i4, i6] = index.split(";");
-      this.addConcaveEdgePoint(i4, edge);
-      this.addConcaveEdgePoint(i6, edge);
+      this.classifyEdgesOfPoint(i4, edge);
+      this.classifyEdgesOfPoint(i6, edge);
+      // return if not concave edge
+      if (edge.count !== 3) return;
+      /**
+       *      1----c
+       *      |\    \
+       *      | \    \
+       * 3----4  2----a
+       * |\    \ |    |
+       * | \    \|    |
+       * b  5----6----9
+       *  \ |    |    |
+       *   \|    |    |
+       *    -----7-----
+       * 找出concaveEdge
+       * 1. 先找46
+       *    edge是正方体的边
+       *    46 69 67是doubleEdge两个正方体的公共edge
+       *    67 69 在同一个距离为1的方向上都没有邻点 剩余的46即为concaveEdge
+       **/
+
       /**
        *      1----c
        *      |\    \
@@ -148,7 +264,8 @@ class ConcaveGeometry extends THREE.BufferGeometry {
        *    -----7
        * 找到25
        * 1. 先找46
-       *    46是棱且被至少两个正方体使用过
+       *    46是concaveEdge
+       *
        * 2. 再找25
        *    向量26与向量46垂直
        *    2与5只有一个公共距离为1的邻点
@@ -190,7 +307,7 @@ class ConcaveGeometry extends THREE.BufferGeometry {
       if (edge25.length > 0) {
         edge25.forEach((edge) => {
           const [p2, p5] = edge;
-          // this.addBigTriangle(p2.vector, p6.vector, p5.vector, center);
+          this.addBigTriangle(p2.vector, p6.vector, p5.vector, center);
         });
       }
 
@@ -221,49 +338,55 @@ class ConcaveGeometry extends THREE.BufferGeometry {
       if (edge13.length > 0) {
         edge13.forEach((edge) => {
           const [p1, p3] = edge;
-          // this.addBigTriangle(p1.vector, p4.vector, p3.vector, center);
+          this.addBigTriangle(p1.vector, p4.vector, p3.vector, center);
         });
       }
       if (edge13.length > 0 && edge25.length > 0) {
-        // this.match1357(edge13, edge25, center);
+        this.match1357(edge13, edge25, center);
       }
     });
-    this.concaveEdgePoints.forEach((point, index) => {
-      /**
-       *      1----c
-       *      |\    \
-       *      | \    \
-       * 3----4  2----a
-       * |\    \ |    |
-       * | \    \|    |
-       * b  5----6----9
-       *  \ |    |\    \
-       *   \|    | \    \
-       *    -----7  e----f
-       *          \ |    |
-       *           \|    |
-       *            g----h
-       *
-       * 生成三角面25e
-       **/
-      if (point.length >= 3) {
-        const p6 = this.pointsMap.get(index);
-        this.debuggerData.point.push(p6.vector);
-        const [e46, e69, e67] = point;
-        const [p4] = e46.points.filter((item) => item.key !== index);
-        const [p9] = e69.points.filter((item) => item.key !== index);
-        const [p7] = e67.points.filter((item) => item.key !== index);
-        const pe = computerSymmetryPoint(p4.vector, p6.vector);
-        const p5 = computerSymmetryPoint(p9.vector, p6.vector);
-        const p2 = computerSymmetryPoint(p7.vector, p6.vector);
-        if (
-          this.getPointsMap(pe.x, pe.y, pe.z) &&
-          this.getPointsMap(p5.x, p5.y, p5.z) &&
-          this.getPointsMap(p2.x, p2.y, p2.z)
-        ) {
-          const center = p6.vector;
-          // this.addBigTriangle(p2, p5, pe, center);
+    this.edgePointsMap.forEach((edges, index) => {
+      const p6 = this.pointsMap.get(index);
+      this.debuggerData.point.push(p6.vector);
+      const center = p6.vector.clone();
+      if (edges.concave.length === 3) {
+        /**
+         * 三条concave edge交于一点
+         *  4
+         *   \
+         *    \
+         *     6----9
+         *     |
+         *     |
+         *     7
+         **/
+        const [e46, e69, e67] = edges.concave;
+        const p4 = e46.points.find((item) => item.key !== index);
+        const p9 = e69.points.find((item) => item.key !== index);
+        const p7 = e67.points.find((item) => item.key !== index);
+        if (edges.concave.length === 3) {
+          // 这两种情况是互斥的
+          this.addConcave25eFace(p4, p6, p7, p9, center) &&
+            this.addConvex25eFace(p4, p6, p7, p9, center);
         }
+      }
+
+      if (edges.concave.length === 2) {
+        /**
+         * 两条concave edge交于一点
+         *  4
+         *   \
+         *    \
+         *     6----9
+         **/
+        const [e46, e69] = edges.concave;
+        const p4 = e46.points.find((item) => item.key !== index);
+        const p9 = e69.points.find((item) => item.key !== index);
+        const v46 = p6.vector.clone().sub(p4.vector);
+        const v96 = p6.vector.clone().sub(p9.vector);
+        debugger;
+        const p2 = edges.convex[0].find((item) => item.key !== index);
+        this.addConcaveFace25je(p2, p4, p6, p9, center);
       }
     });
 
@@ -333,12 +456,105 @@ class ConcaveGeometry extends THREE.BufferGeometry {
     }
   }
 
-  addConcaveEdgePoint(index, edge) {
-    const point = this.concaveEdgePoints.get(index);
-    if (point) {
-      point.push(edge);
-    } else {
-      this.concaveEdgePoints.set(index, [edge]);
+  /**
+   *      1----c
+   *      |\    \
+   *      | \    \
+   * 3----4  2----a
+   * |\    \ |    |
+   * | \    \|    |
+   * b  5----6----9
+   *  \ |    |\    \
+   *   \|    | \    \
+   *    -----7  e----f
+   *          \ |    |
+   *           \|    |
+   *            g----h
+   *
+   * 生成三角面25e
+   **/
+  addConcave25eFace(p4, p6, p7, p9, center) {
+    const pe = computerSymmetryPoint(p4.vector, p6.vector);
+    const p5 = computerSymmetryPoint(p9.vector, p6.vector);
+    const p2 = computerSymmetryPoint(p7.vector, p6.vector);
+    if (
+      this.getPointsMap(pe) &&
+      this.getPointsMap(p5) &&
+      this.getPointsMap(p2)
+    ) {
+      // this.debuggerData.edge.push([pe, p5], [p5, p2], [p2, pe])
+      this.addBigTriangle(p2, p5, pe, center);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   *
+   * f----h----i
+   * |\    \    \
+   * | \    \    \
+   * d  e----9----c
+   * |\ |    |\    \
+   * | \|    | \    \
+   * g  4----6  2----a
+   *  \ |\    \ |    |
+   *   \| \    \|    |
+   *    b  5----7----1
+   *     \ |    |    |
+   *      \|    |    |
+   *       -----7-----
+   * 生成三角面25e
+   **/
+  addConvex25eFace(p4, p6, p7, p9, center) {
+    const pm49 = computerMidpoint(p4.vector, p9.vector);
+    const pm97 = computerMidpoint(p9.vector, p7.vector);
+    const pm74 = computerMidpoint(p7.vector, p4.vector);
+    const pe = computerSymmetryPoint(p6.vector, pm49);
+    const p2 = computerSymmetryPoint(p6.vector, pm97);
+    const p5 = computerSymmetryPoint(p6.vector, pm74);
+    if (
+      this.getPointsMap(pe) &&
+      this.getPointsMap(p5) &&
+      this.getPointsMap(p2)
+    ) {
+      // this.debuggerData.edge.push([pe, p5], [p5, p2], [p2, pe]);
+      this.addBigTriangle(p2, p5, pe, center);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   *      1----c
+   *      |\    \
+   *      | \    \
+   * 3----4  2----a
+   * |\    \ |    |
+   * | \    \|    |
+   * b  5----6----9
+   *  \ |\    \    \
+   *   \| \    \    \
+   *    k  j----e----f
+   *     \ |    |    |
+   *      \|    |    |
+   *       i----g----h
+   * 生成三角面25j和2je
+   **/
+  addConcaveFace25je(p2, p4, p6, p9) {
+    let pe = computerSymmetryPoint(p4.vector, p6.vector);
+    let p5 = computerSymmetryPoint(p9.vector, p6.vector);
+    const pm5e = computerMidpoint(p5, pe);
+    let pj = computerSymmetryPoint(p6.vector, pm5e);
+    if (this.getPointsMap(pj)) {
+      const v64 = p4.vector.clone().sub(p6.vector);
+      const v69 = p9.vector.clone().sub(p6.vector);
+      // const v62 = new THREE.Vector3().crossVectors(v69, v64);
+      // const p2 = new THREE.Vector3().addVectors(p6.vector, v62);
+      this.debuggerData.edge.push([p2, p5], [p5, pj], [pj, p2]);
+      this.debuggerData.edge.push([p2, pe], [pe, pj], [pj, p2]);
+      // this.addBigTriangle(p2, p5, pj, center);
+      // this.addBigTriangle(p2, pe, pj, center);
     }
   }
 
@@ -356,6 +572,9 @@ class ConcaveGeometry extends THREE.BufferGeometry {
    * @memberof lackingBoxGeometry
    */
   addBigTriangle(p1, p2, p3, center) {
+    p1 = p1.clone();
+    p2 = p2.clone();
+    p3 = p3.clone();
     const index = computeKey([p1, p2, p3]);
     const smallTriangle = new SmallTriangle(p1, p2, p3, center);
     // 已经存在的面再次添加会将其值设置为null 换句话说 两次及两次以上添加的面即为重复面,不应该被渲染
@@ -363,8 +582,11 @@ class ConcaveGeometry extends THREE.BufferGeometry {
     if (theFace !== null) {
       if (theFace === undefined) {
         this.faces.push(smallTriangle);
-        this.addEdge(p1, p2);
-        this.addEdge(p2, p3);
+        // this.addEdge(p1, p2);
+        // this.addEdge(p2, p3);
+        // this.debuggerData.edge.push([p1, p2]);
+        // this.debuggerData.edge.push([p2, p3]);
+        // this.debuggerData.edge.push([p1, p3]);
         this.facesMap.set(index, smallTriangle);
       } else {
         // this.facesMap.set(index, null);

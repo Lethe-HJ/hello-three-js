@@ -44,7 +44,7 @@ const createDebugger = (geometry, scene) => {
   geometry1.setFromPoints(data.point);
   var material1 = new THREE.PointsMaterial({
     color: 0x90f000,
-    size: 5.0,
+    size: 10.0,
   });
   var pointsObj = new THREE.Points(geometry1, material1);
   scene.add(pointsObj);
@@ -52,7 +52,7 @@ const createDebugger = (geometry, scene) => {
   data.edge.forEach((edge) => {
     var material = new THREE.LineBasicMaterial({
       color: 0x0000ff,
-      size: 5.0,
+      size: 10.0,
     });
     const points = edge;
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
