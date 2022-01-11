@@ -74,11 +74,25 @@ const createAllPoints = (geometry, scene) => {
   // scene.add(pointsObj);
 };
 
+const addPoints = (data, points) => {
+  points.forEach(point => {
+    const [x,y,z] = point;
+    const index = x + y * 48 + 48 * 48 * z;
+    data[index] = 2
+  })
+};
+
 const test = (scene) => {
   const start = new Date().getTime();
   const IsoSurfaceLevel = 2;
   const precision = 0.5;
   let sideLen = 48;
+  data = new Array(48*48*48).fill(0);
+  addPoints(data, [
+    [0,0,0],
+    [0,0,1],
+    [0,1,1],
+  ])
   const pointsLi = generateSplitPoints(
     data,
     sideLen,
