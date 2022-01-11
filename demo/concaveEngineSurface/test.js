@@ -47,7 +47,7 @@ const createDebugger = (geometry, scene) => {
     size: 10.0,
   });
   var pointsObj = new THREE.Points(geometry1, material1);
-  // scene.add(pointsObj);
+  scene.add(pointsObj);
 
   data.edge.forEach((edge) => {
     var material = new THREE.LineBasicMaterial({

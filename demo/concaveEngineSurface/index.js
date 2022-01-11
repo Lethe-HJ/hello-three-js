@@ -49,6 +49,11 @@ const isVertical = (v1, v2) => {
   return floatCompare(angle, "=", 90, 0.001);
 };
 
+const keyToVector = (key) => {
+  const [x, y, z] = key.split(",");
+  return new THREE.Vector3(Number(x), Number(y), Number(z));
+};
+
 class ConcaveGeometry extends THREE.BufferGeometry {
   constructor(points) {
     super();
@@ -205,9 +210,10 @@ class ConcaveGeometry extends THREE.BufferGeometry {
           isFlat = true;
           break;
         }
-        const i12 = computeKey([p1, p2]);
+        const i12 = computeKey([p1.vector, p2.vector]);
         if (!this.edgesMap.get(i12)) {
           isFlat = true;
+          break;
         }
       }
       if (isFlat) {
@@ -245,8 +251,18 @@ class ConcaveGeometry extends THREE.BufferGeometry {
        *  \ |    |    |
        *   \|    |    |
        *     ————7————
+       *      1————c
+       *      |\    \
+       *      | \    \
+       * 3————4  2————a
+       * |\    \ |    |
+       * | \    \|    |
+       * b  5————6————9
+       *  \ |    |
+       *   \|    |
+       *     ————7
        * 生成265三角面
-       *   条件: 对于concave edge上的当前点 有 convex=2 && concave=1 && flat=2
+       *   条件: 对于concave edge上的当前点 有 convex=2 && concave=1 && flat=2 或convex=4 && concave=1 && flat=0
        *
        * 生成长方形1352
        *   条件: 对于concave edge上的两点同时不满足 convex=0 && concave=3 && flat=0
@@ -255,9 +271,12 @@ class ConcaveGeometry extends THREE.BufferGeometry {
         const p6 = this.pointsMap.get(i6);
         const e46 = point6.concave.find((item) => !item.visited);
         const canAdd265 =
-          point6.convex.length === 2 &&
-          point6.concave.length === 1 &&
-          point6.flat.length === 2;
+          (point6.convex.length === 2 &&
+            point6.concave.length === 1 &&
+            point6.flat.length === 2) ||
+          (point6.convex.length === 4 &&
+            point6.concave.length === 1 &&
+            point6.flat.length === 0);
         // 先生成265三角面
         if (canAdd265) {
           this.addFace265(e46, p6, i6, point6);
@@ -271,65 +290,90 @@ class ConcaveGeometry extends THREE.BufferGeometry {
             ({ convex, concave, flat }) =>
               convex.length === 0 && concave.length === 3 && flat.length === 0
           );
-          const center = computerMidpoint(p4.vector, p6.vector);
           if (canAdd1352) {
-            // this.addFaces1352(p4, p6, center);
+            const center = computerMidpoint(p4.vector, p6.vector);
+            this.addFaces1352(p4, p6, center);
           }
         }
       }
-      // 还有一种情况是point6.concave.length === 2 && point6.concave.length === 2
-      if (point6.concave.length === 2 && point6.concave.length === 1) {
-        /**
-         * 两条concave edge交于一点 且垂直
-         *  4
-         *   \
-         *    \
-         *     6————9
-         * 此时存在以下两种情况
-         *      1————c
-         *      |\    \
-         *      | \    \
-         * 3————4  2————a
-         * |\    \ |    |
-         * | \    \|    |
-         * b  5————6————9
-         *  \ |\    \    \
-         *   \| \    \    \
-         *    k  j————e————f
-         *     \ |    |    |
-         *      \|    |    |
-         *       i————g————h
-         * 生成三角面25j和2je
-         *
-         *
-         *      1————c
-         *      |\    \
-         *      | \    \
-         * 3————4  2————a
-         * |\    \ |    |
-         * | \    \|    |
-         * b  5————6————9
-         *  \ |\    \    \
-         *   \| \    \    \
-         *    k  j————e————f
-         *     \ |\    \   |
-         *      \| \    \  |
-         *       i  l————n-h
-         *        \ |    |
-         *         \|    |
-         *          m————o
-         * 当j不是尖角 即j的convex edge !== 3 时 需生成25e
-         **/
-        const [e46, e69] = point6.concave;
-        const p4 = e46.points.find((item) => item.key !== i6);
-        const p9 = e69.points.find((item) => item.key !== i6);
-        const v46 = p6.vector.clone().sub(p4.vector);
-        const v96 = p6.vector.clone().sub(p9.vector);
-        if (isVertical(v46, v96)) {
+
+      if (point6.concave.length === 2) {
+        if (point6.convex.length === 1) {
+          /**
+           * 两条concave edge交于一点 且垂直
+           *  4
+           *   \
+           *    \
+           *     6————9
+           *
+           *      1————c
+           *      |\    \
+           *      | \    \
+           * 3————4  2————a
+           * |\    \ |    |
+           * | \    \|    |
+           * b  5————6————9
+           *  \ |\    \    \
+           *   \| \    \    \
+           *    k  j————e————f
+           *     \ |    |    |
+           *      \|    |    |
+           *       i————g————h
+           *
+           *
+           *
+           * 还存在一种特殊的情况
+           *      1————c
+           *      |\    \
+           *      | \    \
+           * 3————4  2————a
+           * |\    \ |    |
+           * | \    \|    |
+           * b  5————6————9
+           *  \ |\    \    \
+           *   \| \    \    \
+           *    k  j————e————f
+           *     \ |\    \   |
+           *      \| \    \  |
+           *       i  l————n-h
+           *        \ |    |
+           *         \|    |
+           *          m————o
+           * 当j不是尖角 即j的convex edge !== 3 时 需生成25e
+           **/
+          const [e46, e69] = point6.concave;
+          const p4 = e46.points.find((item) => item.key !== i6);
+          const p9 = e69.points.find((item) => item.key !== i6);
           const p2 = point6.convex[0].points.find((item) => item.key !== i6);
           this.addFace25jeOr25e(p2, p4, p6, p9, center);
         }
+        if (point6.convex.length === 2) {
+          /**
+           *      1————c
+           *      |\    \
+           *      | \    \
+           *      4  2————a
+           *      |\ |    |
+           *      | \|    |
+           *    5————6————9
+           *    |\    \    \
+           *    | \    \    \
+           *    k  j————e————f
+           *     \ |    |    |
+           *      \|    |    |
+           *       i————g————h
+           * 生成三角面25j和2je
+           */
+          const [e46, e69] = point6.concave;
+          const p4 = e46.points.find((item) => item.key !== i6);
+          const p9 = e69.points.find((item) => item.key !== i6);
+          let p2 = point6.convex[0].points.find((item) => item.key !== i6);
+          this.addFace25jeOr25e(p2, p4, p6, p9, center);
+          p2 = point6.convex[1].points.find((item) => item.key !== i6);
+          this.addFace25jeOr25e(p2, p4, p6, p9, center);
+        }
       }
+
       if (point6.concave.length === 3) {
         /**
          * 三条concave edge交于一点
@@ -389,6 +433,17 @@ class ConcaveGeometry extends THREE.BufferGeometry {
      *   \|    |    |
      *     ————7————
      * 假如当前点为终点 即只存在为已访问过的ce46 那么中点可设为ce46中的p4
+     *
+     *      1————c
+     *      |\    \
+     *      | \    \
+     * 3————4  2————a
+     * |\    \ |    |
+     * | \    \|    |
+     * b  5————6————9
+     *  \ |    |
+     *   \|    |
+     *     ————7
      **/
     let p4;
     if (e46) {
@@ -398,11 +453,28 @@ class ConcaveGeometry extends THREE.BufferGeometry {
       p4 = ce46.points.find((item) => item.key !== i6);
     }
     const center = p4.vector;
-    const [point2, point5] = point6.convex;
-    const p2 = point2.points.find((item) => item.key !== i6);
-    const p5 = point5.points.find((item) => item.key !== i6);
+    const [point2, point5, point7, point9] = point6.convex;
+    let p2 = point2.points.find((item) => item.key !== i6);
+    let p5 = point5.points.find((item) => item.key !== i6);
+    if (point6.convex.length === 4) {
+      let p7 = point7.points.find((item) => item.key !== i6);
+      let p9 = point9.points.find((item) => item.key !== i6);
+      // 判断267是否一条直线
+      const v62 = p2.vector.clone().sub(p6.vector);
+      const v76 = p6.vector.clone().sub(p7.vector);
+      if (!v62.equals(v76)) {
+        p9 = [p7, (p7 = p9)][0]; // 交换p9,p7
+      }
+      const v69 = p9.vector.clone().sub(p6.vector);
+      const v6a = v69.clone().add(v62);
+      const pa = p6.vector.clone().add(v6a);
+      const ia = computeKey([pa]);
+      if (!this.pointsMap.has(ia)) {
+        p9 = [p5, (p5 = p9)][0]; // 交换p9,p5
+      }
+      this.addBigTriangle(p7.vector, p6.vector, p9.vector, center);
+    }
     this.addBigTriangle(p2.vector, p6.vector, p5.vector, center);
-    return p4;
   }
 
   /**
@@ -441,18 +513,16 @@ class ConcaveGeometry extends THREE.BufferGeometry {
      */
     p6.neighbour[2].forEach((pIndexC6, index) => {
       let c6 = this.pointsMap.get(pIndexC6);
-      const pIndexC4 = p6.neighbour[2][index];
+      const pIndexC4 = p4.neighbour[2][index];
       const c4 = this.pointsMap.get(pIndexC4);
       if (!c6 && !c4) {
-        const [c6x, c6y, c6z] = pIndexC6.split(",");
-        const [c4x, c4y, c4z] = pIndexC4.split(",");
-        const c6 = new THREE.Vector3(c6x, c6y, c6z);
-        const c4 = new THREE.Vector3(c4x, c4y, c4z);
-        const v6c6 = c6.sub(p6.vector);
-        const v4c4 = c4.sub(p4.vector);
+        const c6 = keyToVector(pIndexC6);
+        const c4 = keyToVector(pIndexC4);
+        const v6c6 = c6.clone().sub(p6.vector);
+        const v4c4 = c4.clone().sub(p4.vector);
         // 找出向量中分量不为0的两个分量
-        const componentP6s = [p6.vector.x, p6.vector.y, p6.vector.z];
         const p25s = [];
+        const componentP6s = [p6.vector.x, p6.vector.y, p6.vector.z];
         [v6c6.x, v6c6.y, v6c6.z].forEach((component, index) => {
           if (component !== 0) {
             const newComponents = [...componentP6s];
@@ -461,9 +531,10 @@ class ConcaveGeometry extends THREE.BufferGeometry {
           }
         });
         const p13s = [];
+        const componentP4s = [p4.vector.x, p4.vector.y, p4.vector.z];
         [v4c4.x, v4c4.y, v4c4.z].forEach((component, index) => {
           if (component !== 0) {
-            const newComponents = [...componentP6s];
+            const newComponents = [...componentP4s];
             newComponents[index] += component;
             p13s.push(newComponents);
           }
@@ -476,6 +547,8 @@ class ConcaveGeometry extends THREE.BufferGeometry {
         p5 = new THREE.Vector3(p5[0], p5[1], p5[2]);
         this.addBigTriangle(p1, p3, p5, center);
         this.addBigTriangle(p5, p2, p1, center);
+        // this.deleteFace([p1, p2, p6.vector, p4.vector]);
+        // this.deleteFace([p5, p6.vector, p4.vector, p3]);
       }
     });
   }
@@ -638,6 +711,26 @@ class ConcaveGeometry extends THREE.BufferGeometry {
       ) {
         this.addBigTriangle(p2, p5, pe, center);
       }
+    }
+  }
+
+  deleteFace(points) {
+    if (points.length === 4) {
+      const [p1, p2, p3, p4] = points;
+      const key123 = computeKey([p1, p2, p3]);
+      if (this.facesMap.has(key123)) {
+        this.facesMap.delete(key123);
+        const key341 = computeKey([p3, p4, p1]);
+        this.facesMap.delete(key341);
+      } else {
+        const key412 = computeKey([p4, p1, p2]);
+        this.facesMap.delete(key412);
+        const key234 = computeKey([p2, p3, p4]);
+        this.facesMap.delete(key234);
+      }
+    } else {
+      const key = computeKey(points);
+      this.facesMap.delete(key);
     }
   }
 

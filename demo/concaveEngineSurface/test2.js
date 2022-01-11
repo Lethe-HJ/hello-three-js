@@ -47,7 +47,7 @@ const createDebugger = (geometry, scene) => {
     size: 10.0,
   });
   var pointsObj = new THREE.Points(geometry1, material1);
-  // scene.add(pointsObj);
+  scene.add(pointsObj);
 
   data.edge.forEach((edge) => {
     var material = new THREE.LineBasicMaterial({
@@ -74,12 +74,12 @@ const createAllPoints = (geometry, scene) => {
   // scene.add(pointsObj);
 };
 
-const addPoints = (data, points) => {
-  points.forEach(point => {
-    const [x,y,z] = point;
-    const index = x + y * 48 + 48 * 48 * z;
-    data[index] = 2
-  })
+const addPoints = (data, x0, y0, z0, points) => {
+  points.forEach((point) => {
+    const [x, y, z] = point;
+    const index = x + x0 + (y + y0) * 48 + 48 * 48 * (z + z0);
+    data[index] = 2;
+  });
 };
 
 const test = (scene) => {
@@ -87,12 +87,82 @@ const test = (scene) => {
   const IsoSurfaceLevel = 2;
   const precision = 0.5;
   let sideLen = 48;
-  data = new Array(48*48*48).fill(0);
-  addPoints(data, [
-    [0,0,0],
-    [0,0,1],
-    [0,1,1],
-  ])
+  data = new Array(48 * 48 * 48).fill(0);
+  addPoints(data, 0, 0, 0, [
+    [0, 0, 0],
+    [0, 0, 1],
+    [0, 1, 1],
+  ]);
+
+  addPoints(data, 4, 0, 0, [
+    [0, 0, 0],
+    [0, 1, 1],
+  ]);
+
+  addPoints(data, 8, 0, 0, [
+    [0, 0, 0],
+    [0, 0, 1],
+    [0, 1, 1],
+    [1, 0, 0],
+    [1, 0, 1],
+    [1, 1, 1],
+    [2, 0, 0],
+    [2, 0, 1],
+    [2, 1, 1],
+  ]);
+
+  addPoints(data, 0, 0, 4, [
+    [1, 0, 0],
+    [1, 0, 1],
+    [1, 1, 1],
+    [0, 0, 1],
+  ]);
+
+  addPoints(data, 4, 0, 4, [
+    [1, 0, 0],
+    [1, 0, 1],
+    [1, 1, 1],
+    [0, 0, 1],
+    [0, 0, 0],
+  ]);
+
+  addPoints(data, 8, 0, 4, [
+    [2, 0, 0],
+    [2, 0, 1],
+    [2, 1, 1],
+    [1, 0, 1],
+    [1, 0, 0],
+    [0, 0, 0],
+  ]);
+
+  addPoints(data, 0, 0, 8, [
+    [0, 0, 0],
+    [0, 0, 1],
+    [1, 0, 0],
+    [1, 0, 1],
+    [0, 1, 1],
+    [1, 1, 0],
+    [1, 1, 1],
+  ]);
+
+  addPoints(data, 4, 0, 8, [
+    [1, 0, 0],
+    [1, 0, 1],
+    [2, 0, 0],
+    [2, 0, 1],
+    [1, 1, 1],
+    [2, 1, 0],
+    [2, 1, 1],
+    [0, 0, 1],
+  ]);
+
+  addPoints(data, 0, 0, 12, [
+    [1, 0, 0],
+    [1, 0, 1],
+    [0, 0, 1],
+    [1, 1, 0],
+  ]);
+
   const pointsLi = generateSplitPoints(
     data,
     sideLen,

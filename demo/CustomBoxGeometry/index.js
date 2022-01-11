@@ -287,7 +287,6 @@ class SmallTriangle {
   }
 
   isWrongClockwise(center) {
-    if (center === undefined) debugger;
     const centerToMid = new THREE.Vector3(
       this.midpoint.x - center.x,
       this.midpoint.y - center.y,
