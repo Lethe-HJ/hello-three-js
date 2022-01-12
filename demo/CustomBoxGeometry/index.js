@@ -253,6 +253,9 @@ class CustomBoxGeometry extends THREE.BufferGeometry {
       const theFatherEdge = this.fatherEdgesMap.get(index);
       if (theFatherEdge) {
         theFatherEdge.count += 1;
+        if (theFatherEdge.count === 4) {
+          this.fatherEdgesMap.delete(index);
+        }
       } else {
         this.fatherEdgesMap.set(index, { points, count: 1 });
       }

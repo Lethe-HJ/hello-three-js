@@ -163,7 +163,7 @@ class ConcaveGeometry extends THREE.BufferGeometry {
   classifyEdgesOfPoint(index, edge) {
     let edgePoint = this.edgePointsMap.get(index);
     if (!edgePoint) {
-      edgePoint = { convex: [], flat: [], concave: [], others: [] };
+      edgePoint = { convex: [], flat: [], concave: [] };
       this.edgePointsMap.set(index, edgePoint);
     }
     if (edge.count === 1) {
@@ -225,7 +225,12 @@ class ConcaveGeometry extends THREE.BufferGeometry {
       // concave edge
       edgePoint.concave.push(edge);
     } else {
-      edgePoint.others.push(edge);
+      debugger;
+    }
+    if (index === "11.5,0.5,20.5") {
+      this.debuggerData.point.push({ x: 11.5, y: 0.5, z: 20.5 });
+      // debugger;
+      console.log(edgePoint);
     }
   }
 
@@ -238,6 +243,7 @@ class ConcaveGeometry extends THREE.BufferGeometry {
       this.classifyEdgesOfPoint(i6, edge);
     });
     this.edgePointsMap.forEach((point6, i6) => {
+      if(i6 === "11.5,0.5,20.5") debugger
       const p6 = this.pointsMap.get(i6);
       const center = p6.vector.clone();
       /**
@@ -300,6 +306,8 @@ class ConcaveGeometry extends THREE.BufferGeometry {
         if (canAdd1352) {
           const center = computerMidpoint(p4.vector, p6.vector);
           this.addFaces1352(p4, p6, center);
+        } else {
+          debugger;
         }
       }
 
