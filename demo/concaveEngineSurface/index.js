@@ -779,10 +779,11 @@ class ConcaveGeometry extends THREE.BufferGeometry {
     if (theFace !== null) {
       if (theFace === undefined) {
         this.faces.push(smallTriangle);
-        // this.debuggerData.edge.push([p1, p2]);
-        // this.debuggerData.edge.push([p2, p3]);
-        // this.debuggerData.edge.push([p1, p3]);
-        this.facesMap.set(index, smallTriangle);
+        this.debuggerData.edge.push([p1, p2]);
+        this.debuggerData.edge.push([p2, p3]);
+        this.debuggerData.edge.push([p1, p3]);
+        this.debuggerData.point.push(smallTriangle.midpoint);
+        // this.facesMap.set(index, smallTriangle);
       } else {
         this.facesMap.set(index, null);
       }
