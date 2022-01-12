@@ -224,13 +224,6 @@ class ConcaveGeometry extends THREE.BufferGeometry {
     } else if (edge.count === 3) {
       // concave edge
       edgePoint.concave.push(edge);
-    } else {
-      debugger;
-    }
-    if (index === "11.5,0.5,20.5") {
-      this.debuggerData.point.push({ x: 11.5, y: 0.5, z: 20.5 });
-      // debugger;
-      console.log(edgePoint);
     }
   }
 
@@ -243,7 +236,6 @@ class ConcaveGeometry extends THREE.BufferGeometry {
       this.classifyEdgesOfPoint(i6, edge);
     });
     this.edgePointsMap.forEach((point6, i6) => {
-      if(i6 === "11.5,0.5,20.5") debugger
       const p6 = this.pointsMap.get(i6);
       const center = p6.vector.clone();
       /**
@@ -274,8 +266,6 @@ class ConcaveGeometry extends THREE.BufferGeometry {
        *   条件: 对于concave edge上的两点同时不满足 convex=0 && concave=3 && flat=0
        **/
       if (point6.concave.length > 0) {
-        const p6 = this.pointsMap.get(i6);
-        let e46 = point6.concave.find((item) => !item.visited);
         const canAdd265 =
           (point6.convex.length === 2 &&
             point6.concave.length === 1 &&
@@ -283,32 +273,25 @@ class ConcaveGeometry extends THREE.BufferGeometry {
           (point6.convex.length === 4 &&
             point6.concave.length === 1 &&
             point6.flat.length === 0);
-        // 先生成265三角面
+        let e46s = point6.concave.filter((item) => !item.visited);
         if (canAdd265) {
-          this.addFace265(e46, p6, i6, point6);
+          this.addFace265(e46s[0], p6, i6, point6);
         }
-        if (!e46) {
-          e46 = point6.concave.find((item) => item.visited);
-        }
-        e46.visited = true;
-        const p4 = e46.points.find((item) => item.key !== i6);
-        const point4 = this.edgePointsMap.get(p4.key);
-        // concave edge 两点中只要有一点满足 convex=0 && concave=3 && flat=0 则不能生成1352长方形面
-        console.log("point4=", point4, "point6=", point6);
-        const canAdd1352 = ![point4, point6].some(
-          ({ convex, flat, concave }) => {
-            // console.log(convex.length, concave.length, flat.length);
-            return (
-              convex.length === 0 && flat.length === 0 && concave.length === 3
-            );
+        // 先生成265三角面
+        e46s.forEach((e46) => {
+          e46.visited = true;
+          const p4 = e46.points.find((item) => item.key !== i6);
+          const point4 = this.edgePointsMap.get(p4.key);
+          // concave edge 两点中只要有一点满足 convex=0 && concave=3 && flat=0 则不能生成1352长方形面
+          const canAdd1352 = ![point4, point6].some(
+            ({ convex, flat, concave }) => {
+              convex.length === 0 && flat.length === 0 && concave.length === 3;
+            }
+          );
+          if (canAdd1352) {
+            this.addFaces1352(p4, p6, center);
           }
-        );
-        if (canAdd1352) {
-          const center = computerMidpoint(p4.vector, p6.vector);
-          this.addFaces1352(p4, p6, center);
-        } else {
-          debugger;
-        }
+        });
       }
 
       if (point6.concave.length === 2) {
@@ -412,7 +395,7 @@ class ConcaveGeometry extends THREE.BufferGeometry {
           this.addFace25jeOr25e(p5, pe, p6, p7, center);
         }
       }
-
+      // point6.concave.length ===5 && this.debuggerData.point.push(p6.vector)
       if (point6.concave.length === 3) {
         /**
          * 三条concave edge交于一点
@@ -428,11 +411,10 @@ class ConcaveGeometry extends THREE.BufferGeometry {
         const p4 = e46.points.find((item) => item.key !== i6);
         const p9 = e69.points.find((item) => item.key !== i6);
         const p7 = e67.points.find((item) => item.key !== i6);
-        if (point6.concave.length === 3) {
-          // 这两种情况是互斥的
-          this.addConvexFace25e(p4, p6, p7, p9, center) &&
-            this.addConcaveFace25e(p4, p6, p7, p9, center);
-        }
+
+        // 这两种情况是互斥的
+        this.addConvexFace25e(p4, p6, p7, p9, center) &&
+          this.addConcaveFace25e(p4, p6, p7, p9, center);
       }
     });
 
@@ -586,8 +568,8 @@ class ConcaveGeometry extends THREE.BufferGeometry {
         p5 = new THREE.Vector3(p5[0], p5[1], p5[2]);
         this.addBigTriangle(p1, p3, p5, center);
         this.addBigTriangle(p5, p2, p1, center);
-        // this.deleteFace([p1, p2, p6.vector, p4.vector]);
-        // this.deleteFace([p5, p6.vector, p4.vector, p3]);
+        this.deleteFace([p1, p2, p6.vector, p4.vector]);
+        this.deleteFace([p5, p6.vector, p4.vector, p3]);
       }
     });
   }
@@ -797,10 +779,10 @@ class ConcaveGeometry extends THREE.BufferGeometry {
     if (theFace !== null) {
       if (theFace === undefined) {
         this.faces.push(smallTriangle);
-        this.debuggerData.edge.push([p1, p2]);
-        this.debuggerData.edge.push([p2, p3]);
-        this.debuggerData.edge.push([p1, p3]);
-        // this.facesMap.set(index, smallTriangle);
+        // this.debuggerData.edge.push([p1, p2]);
+        // this.debuggerData.edge.push([p2, p3]);
+        // this.debuggerData.edge.push([p1, p3]);
+        this.facesMap.set(index, smallTriangle);
       } else {
         this.facesMap.set(index, null);
       }
