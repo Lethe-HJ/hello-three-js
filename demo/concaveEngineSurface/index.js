@@ -406,6 +406,34 @@ class ConcaveGeometry extends THREE.BufferGeometry {
          *     |
          *     |
          *     7
+         *
+         *      1————c
+         *      |\    \
+         *      | \    \
+         * 3————4  2————a
+         * |\    \ |    |
+         * | \    \|    |
+         * b  5————6————9
+         *  \ |    |\    \
+         *   \|    | \    \
+         *    ————-7  e————f
+         *          \ |    |
+         *           \|    |
+         *            g————h
+         *
+         * f————h————i
+         * |\    \    \
+         * | \    \    \
+         * d  e————9————c
+         * |\ |    |\    \
+         * | \|    | \    \
+         * g  4————6  2————a
+         *  \ |\    \ |    |
+         *   \| \    \|    |
+         *    b  5————7————1
+         *     \ |    |    |
+         *      \|    |    |
+         *       ————-7————-
          **/
         const [e46, e69, e67] = point6.concave;
         const p4 = e46.points.find((item) => item.key !== i6);
@@ -415,6 +443,63 @@ class ConcaveGeometry extends THREE.BufferGeometry {
         // 这两种情况是互斥的
         this.addConvexFace25e(p4, p6, p7, p9, center) &&
           this.addConcaveFace25e(p4, p6, p7, p9, center);
+      }
+
+      if (point6.concave.length === 5) {
+        /**
+         * f————h
+         * |\    \
+         * | \    \
+         * d  e————9————c
+         * |\ |    |\    \
+         * | \|    | \    \
+         * g  4————6  2————a
+         *  \ |\    \ |    |
+         *   \| \    \|    |
+         *    b  5————7————1
+         *     \ |    |    |
+         *      \|    |    |
+         *       ————-7————-
+         *
+         * f—————h____i
+         * |     |    |
+         * |     |    |
+         * e—————9—————c
+         *  |    |     |
+         *  |    |     |
+         *  5￣￣2—————a
+         * 这个五条边是96 49 76 h6 c6 顺序未知
+         */
+        const coordDict = {
+          x: new Map(),
+          y: new Map(),
+          z: new Map(),
+        };
+        // 先找到点9
+        let p9;
+        point6.concave.forEach((edge, index) => {
+          const p = edge.points.find((item) => item.key !== i6);
+          const vp6 = p6.vector.clone().sub(p.vector);
+          const xObj = coordDict.x.get(vp6.x);
+          if (!xObj) coordDict.x.set(vp6.x, { count: 1, index });
+          else xObj.count += 1;
+          const yObj = coordDict.y.get(vp6.y);
+          if (!yObj) coordDict.y.set(vp6.y, { count: 1, index });
+          else yObj.count += 1;
+          const zObj = coordDict.z.get(vp6.z);
+          if (!zObj) coordDict.z.set(vp6.z, { count: 1, index });
+          else zObj.count += 1;
+        });
+        const { x: xMap, y: yMap, z: zMap } = coordDict;
+        const uniqueMap = [xMap, yMap, zMap].find(
+          (coordMap) => coordMap.size === 2
+        );
+        for (let value of uniqueMap.values()) {
+          if (value === 1) {
+            p9 = point6.concave[value.index];
+            break;
+          }
+        }
       }
     });
 
