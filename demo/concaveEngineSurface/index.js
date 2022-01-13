@@ -461,13 +461,13 @@ class ConcaveGeometry extends THREE.BufferGeometry {
          *      \|    |    |
          *       ————-7————-
          *
-         * f—————h____i
-         * |     |    |
-         * |     |    |
-         * e—————9—————c
-         *  |    |     |
-         *  |    |     |
-         *  5￣￣2—————a
+         * f————— hj____i
+         * |      |     |
+         * |      |     k
+         * e————— 9 —————c
+         *  4     |      |
+         *  |     |      |
+         *  5￣￣7 2—————a
          * 这个五条边是96 49 76 h6 c6 顺序未知
          */
         const coordDict = {
@@ -476,7 +476,7 @@ class ConcaveGeometry extends THREE.BufferGeometry {
           z: new Map(),
         };
         // 先找到点9
-        let p9;
+        let i9;
         point6.concave.forEach((edge, index) => {
           const p = edge.points.find((item) => item.key !== i6);
           const vp6 = p6.vector.clone().sub(p.vector);
@@ -495,11 +495,28 @@ class ConcaveGeometry extends THREE.BufferGeometry {
           (coordMap) => coordMap.size === 2
         );
         for (let value of uniqueMap.values()) {
-          if (value === 1) {
-            p9 = point6.concave[value.index];
+          if (value.count === 1) {
+            i9 = value.index;
             break;
           }
         }
+        const p9 = point6.concave[i9];
+        const [ej6, e76, ek6, e46] = point6.concave.filter(
+          (_, index) => index !== i9
+        );
+        const pj = ej6.points.find((item) => item.key !== i6);
+        const p7 = e76.points.find((item) => item.key !== i6);
+        const pk = ek6.points.find((item) => item.key !== i6);
+        const p4 = e46.points.find((item) => item.key !== i6);
+        const v6i = pj.vector.clone().add(pc.vector)
+        const v6k = pk.vector.clone().sub(p6.vector);
+        const v76 = p6.vector.clone().sub(p7.vector);
+        if (!v6j.equals(v76)) {
+          pj = [pk, (pk = pj)][0]; // 交换pk pj
+        }
+        const v6i = pj.vector.clone().add(pc.vector)
+        const pi = v6i.vector.clone().add(p6.vector)
+
       }
     });
 
