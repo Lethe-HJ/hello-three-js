@@ -71,7 +71,7 @@ class ConcaveGeometry extends THREE.BufferGeometry {
     this.cPoints = points;
     this.markSurfacePoints(points);
     this.boxes = this.createCustomBoxes();
-    this.smoothing();
+    // this.smoothing();
     this.renderGeometry();
   }
 
@@ -445,79 +445,79 @@ class ConcaveGeometry extends THREE.BufferGeometry {
           this.addConcaveFace25e(p4, p6, p7, p9, center);
       }
 
-      if (point6.concave.length === 5) {
-        /**
-         * f————h
-         * |\    \
-         * | \    \
-         * d  e————9————c
-         * |\ |    |\    \
-         * | \|    | \    \
-         * g  4————6  2————a
-         *  \ |\    \ |    |
-         *   \| \    \|    |
-         *    b  5————7————1
-         *     \ |    |    |
-         *      \|    |    |
-         *       ————-7————-
-         *
-         * f————— hj____i
-         * |      |     |
-         * |      |     k
-         * e————— 9 —————c
-         *  4     |      |
-         *  |     |      |
-         *  5￣￣7 2—————a
-         * 这个五条边是96 49 76 h6 c6 顺序未知
-         */
-        const coordDict = {
-          x: new Map(),
-          y: new Map(),
-          z: new Map(),
-        };
-        // 先找到点9
-        let i9;
-        point6.concave.forEach((edge, index) => {
-          const p = edge.points.find((item) => item.key !== i6);
-          const vp6 = p6.vector.clone().sub(p.vector);
-          const xObj = coordDict.x.get(vp6.x);
-          if (!xObj) coordDict.x.set(vp6.x, { count: 1, index });
-          else xObj.count += 1;
-          const yObj = coordDict.y.get(vp6.y);
-          if (!yObj) coordDict.y.set(vp6.y, { count: 1, index });
-          else yObj.count += 1;
-          const zObj = coordDict.z.get(vp6.z);
-          if (!zObj) coordDict.z.set(vp6.z, { count: 1, index });
-          else zObj.count += 1;
-        });
-        const { x: xMap, y: yMap, z: zMap } = coordDict;
-        const uniqueMap = [xMap, yMap, zMap].find(
-          (coordMap) => coordMap.size === 2
-        );
-        for (let value of uniqueMap.values()) {
-          if (value.count === 1) {
-            i9 = value.index;
-            break;
-          }
-        }
-        const p9 = point6.concave[i9];
-        const [ej6, e76, ek6, e46] = point6.concave.filter(
-          (_, index) => index !== i9
-        );
-        const pj = ej6.points.find((item) => item.key !== i6);
-        const p7 = e76.points.find((item) => item.key !== i6);
-        const pk = ek6.points.find((item) => item.key !== i6);
-        const p4 = e46.points.find((item) => item.key !== i6);
-        const v6i = pj.vector.clone().add(pc.vector)
-        const v6k = pk.vector.clone().sub(p6.vector);
-        const v76 = p6.vector.clone().sub(p7.vector);
-        if (!v6j.equals(v76)) {
-          pj = [pk, (pk = pj)][0]; // 交换pk pj
-        }
-        const v6i = pj.vector.clone().add(pc.vector)
-        const pi = v6i.vector.clone().add(p6.vector)
+      // if (point6.concave.length === 5) {
+      //   /**
+      //    * f————h
+      //    * |\    \
+      //    * | \    \
+      //    * d  e————9————c
+      //    * |\ |    |\    \
+      //    * | \|    | \    \
+      //    * g  4————6  2————a
+      //    *  \ |\    \ |    |
+      //    *   \| \    \|    |
+      //    *    b  5————7————1
+      //    *     \ |    |    |
+      //    *      \|    |    |
+      //    *       ————-7————-
+      //    *
+      //    * f————— hj____i
+      //    * |      |     |
+      //    * |      |     k
+      //    * e————— 9 —————c
+      //    *  4     |      |
+      //    *  |     |      |
+      //    *  5￣￣7 2—————a
+      //    * 这个五条边是96 49 76 h6 c6 顺序未知
+      //    */
+      //   const coordDict = {
+      //     x: new Map(),
+      //     y: new Map(),
+      //     z: new Map(),
+      //   };
+      //   // 先找到点9
+      //   let i9;
+      //   point6.concave.forEach((edge, index) => {
+      //     const p = edge.points.find((item) => item.key !== i6);
+      //     const vp6 = p6.vector.clone().sub(p.vector);
+      //     const xObj = coordDict.x.get(vp6.x);
+      //     if (!xObj) coordDict.x.set(vp6.x, { count: 1, index });
+      //     else xObj.count += 1;
+      //     const yObj = coordDict.y.get(vp6.y);
+      //     if (!yObj) coordDict.y.set(vp6.y, { count: 1, index });
+      //     else yObj.count += 1;
+      //     const zObj = coordDict.z.get(vp6.z);
+      //     if (!zObj) coordDict.z.set(vp6.z, { count: 1, index });
+      //     else zObj.count += 1;
+      //   });
+      //   const { x: xMap, y: yMap, z: zMap } = coordDict;
+      //   const uniqueMap = [xMap, yMap, zMap].find(
+      //     (coordMap) => coordMap.size === 2
+      //   );
+      //   for (let value of uniqueMap.values()) {
+      //     if (value.count === 1) {
+      //       i9 = value.index;
+      //       break;
+      //     }
+      //   }
+      //   const p9 = point6.concave[i9];
+      //   const [ej6, e76, ek6, e46] = point6.concave.filter(
+      //     (_, index) => index !== i9
+      //   );
+      //   const pj = ej6.points.find((item) => item.key !== i6);
+      //   const p7 = e76.points.find((item) => item.key !== i6);
+      //   const pk = ek6.points.find((item) => item.key !== i6);
+      //   const p4 = e46.points.find((item) => item.key !== i6);
+      //   const v6i = pj.vector.clone().add(pc.vector)
+      //   const v6k = pk.vector.clone().sub(p6.vector);
+      //   const v76 = p6.vector.clone().sub(p7.vector);
+      //   if (!v6j.equals(v76)) {
+      //     pj = [pk, (pk = pj)][0]; // 交换pk pj
+      //   }
+      //   const v6i = pj.vector.clone().add(pc.vector)
+      //   const pi = v6i.vector.clone().add(p6.vector)
 
-      }
+      // }
     });
 
     console.log("smooth花费", new Date().getTime() - start);
@@ -881,11 +881,11 @@ class ConcaveGeometry extends THREE.BufferGeometry {
     if (theFace !== null) {
       if (theFace === undefined) {
         this.faces.push(smallTriangle);
-        this.debuggerData.edge.push([p1, p2]);
-        this.debuggerData.edge.push([p2, p3]);
-        this.debuggerData.edge.push([p1, p3]);
-        this.debuggerData.point.push(smallTriangle.midpoint);
-        // this.facesMap.set(index, smallTriangle);
+        // this.debuggerData.edge.push([p1, p2]);
+        // this.debuggerData.edge.push([p2, p3]);
+        // this.debuggerData.edge.push([p1, p3]);
+        // this.debuggerData.point.push(smallTriangle.midpoint);
+        this.facesMap.set(index, smallTriangle);
       } else {
         this.facesMap.set(index, null);
       }

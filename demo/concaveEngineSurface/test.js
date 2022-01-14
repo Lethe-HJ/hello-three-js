@@ -15,7 +15,7 @@ const createConcave = (points, scene) => {
   createCustomBox(geometry, scene);
 
   const material = new THREE.MeshLambertMaterial({
-    color: 0xffc0cb,
+    color: 0x00ff,
     side: THREE.DoubleSide, //两面可见
     // wireframe: true,
   });
@@ -29,7 +29,7 @@ const createConcave = (points, scene) => {
 const createCustomBox = (concave, scene) => {
   return concave.boxes.map((box) => {
     const material = new THREE.MeshPhongMaterial({
-      color: 0xffc0cb,
+      color: yellow,
       side: THREE.DoubleSide, //两面可见
     });
 
